@@ -17,7 +17,7 @@ public class WordRepo {
         final int PORT = 666;
 
         try (DatagramSocket serverSocket = new DatagramSocket(PORT)){
-            System.out.println("UDP Wordrepo is running on port " + PORT);
+            System.out.println("UDP WordRepo is running on port " + PORT);
 
             while (true) {
                 byte[] inData = new byte[1024];
@@ -83,7 +83,7 @@ public class WordRepo {
                 response = FetchWord(input);
                 break;
             default:
-                response = " 0 Invalid request";
+                response = "INVALID * 0";
         }
     
         return response;
@@ -95,7 +95,8 @@ public class WordRepo {
         String[] tokens = input.split(" ");
 
         if (tokens.length != 2 || !tokens[0].equals("LOOKUP")) {
-            return " 0 Invalid request";
+            System.out.println("LOOKUP 0 invalid request");
+            return "LOOKUP * 0";
         }
 
         String wordToken = tokens[1];
@@ -104,15 +105,17 @@ public class WordRepo {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.trim().equalsIgnoreCase(wordToken)) {
-                    return wordToken + " 1 exists";
+                    System.out.println(wordToken + " found");
+                    return "LOOKUP " + wordToken + " 1";
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return " 0 Error occurred during file I/O in LookupWord";
+            System.out.println("Error occurred during file I/O in LookupWord");
+            return "LOOKUP * 0";
         }
-
-        return wordToken + " 0 does not exist";
+        System.out.println(wordToken + " notfound in words.txt");
+        return "LOOKUP " + wordToken + " 0";
 
     }
 
@@ -123,7 +126,8 @@ public class WordRepo {
         Boolean exists = false;
 
         if (tokens.length != 2 || !tokens[0].equals("REMOVE")) {
-            return " 0 Invalid request";
+            System.out.println(tokens[0] + " 0 invalid request in REMOVE");
+            return "REMOVE * 0";
         }
         String wordToken = tokens[1];
 
@@ -149,16 +153,20 @@ public class WordRepo {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return " 0 Error occurred while removing the word during file I/O";
+            System.out.println(wordToken + " Error occurred while removing the word during file I/O");
+            return "REMOVE " + wordToken +  " 0";
         }
 
 
 
         if (exists) {
-            return wordToken + " 1 deleted";
+            System.out.println(wordToken + " deleted");
+            return "REMOVE " + wordToken + " 1";
+            
         }
         else {
-            return wordToken + " 0 wasn't found in words.txt";
+            System.out.println(wordToken + " wasn't found in words.txt");
+            return "REMOVE " + wordToken + " 0";
         }        
     }
 
@@ -171,7 +179,7 @@ public class WordRepo {
             return "Invalid request";
         }
 
-        String wordToAdd = tokens[1];
+        String wordToken = tokens[1];
 
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
             String line;
@@ -179,39 +187,42 @@ public class WordRepo {
             // Iterate through each line in the "words.txt" file
              while ((line = br.readLine()) != null) {
                 // Check if the trimmed line matches the word to be added (case-insensitive)
-                if (line.trim().equalsIgnoreCase(wordToAdd)) {
-                    return wordToAdd + " 0 already exists, not added";
+                if (line.trim().equalsIgnoreCase(wordToken)) {
+                    System.out.println(wordToken + " Already exists, not added");
+                    return "ADD " + wordToken + " 0";
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return " 0 Error occurred while checking the word during file I/O";
+            System.out.println(" Error occurred while checking the word during file I/O");
+            return "ADD "+ wordToken +" 0";
         }
 
         // The word does not exist, so add it to the file
         try (BufferedWriter bw = new BufferedWriter(new FileWriter("words.txt", true))) {
-            bw.write(wordToAdd);
+            bw.write(wordToken);
             bw.newLine(); // Add a newline character after the word
         } catch (Exception e) {
             e.printStackTrace();
-            return " 0 Error occurred while adding the word during file I/O";
+            System.out.println(wordToken + " Error occurred while adding the word during file I/O");
+            return "ADD " + wordToken + " 0";
         }
-
-        return wordToAdd + " 1 added";
+        System.out.println(wordToken + " added");
+        return "ADD " + wordToken + " 1";
     }
 
 
 
     private static String FetchWord(String input){
-        String[] parts = input.split("|");
+        String[] parts = input.split("| ");
 
         // Check if the input message is in the expected format
         if (parts.length != 7 || !parts[0].equals("FETCH")) {
-            return " 0 Invalid request";
+            return "FETCH * 0";
         }
 
 
-        return " 0 stub";
+        return "FETCH * 0";
     }
 
 }
