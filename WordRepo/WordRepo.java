@@ -214,15 +214,115 @@ public class WordRepo {
 
 
     private static String FetchWord(String input){
-        String[] parts = input.split("| ");
+        String[] tokens = input.split(" ");
+        
 
         // Check if the input message is in the expected format
-        if (parts.length != 7 || !parts[0].equals("FETCH")) {
+        if (tokens.length != 3 || !tokens[0].equals("FETCH")) {
+            System.out.println("Error, input expected: FETCH <command> <char/length>");
             return "FETCH * 0";
         }
 
+        if(tokens[1].equals("l")){ //l=length
+            try{
+                int len = Integer.parseInt(tokens[2]);
+            }
+            catch (NumberFormatException ex){
+                ex.printStackTrace();
+                return "FETCH * 0";
+            }
+            return FindLength(len);
+        }
+        else if(tokens[1].equals("m")){ //m=middle
+            return Contains(tokens[2]);
+        }
+        else if(tokens[1].equals("f")){ //f=first
+            return StartsWith(tokens[2]);
+        }
+        else if(tokens[1].equals("e")){ //e=ends
+            return EndsWith(tokens[2]);
+        }
+        else{
+            System.out.println("error in fetch word, inccorect argument structure expect <command> = l,m,f,e");
+        }
 
         return "FETCH * 0";
     }
 
+    private static String FindLength(int len){
+        String foundWord = "";
+        List<String> matchedWords = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().length() >= minLength) {
+                    matchedWords.add(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error occurred while reading words.txt");
+            return "FETCH * 0";
+        }
+
+        if (matchedWords.isEmpty()) {
+            System.out.println("No words found at desired length " + len + " or greater");
+            return "FETCH * 0";
+        }
+
+        Random random = new Random();
+        String foundmWord = matchedWords.get(random.nextInt(matchedWords.size()));
+        
+        
+        return "FETCH " + foundWord + " 1";
+    }
+    private static String StartsWith(String prefix) {
+        List<String> matchedWords = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().toLowerCase().startsWith(prefix.toLowerCase())) {
+                    matchedWords.add(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error occurred while reading words.txt");
+            return "FETCH * 0";
+        }
+        if (matchedWords.isEmpty()) return "FETCH * 0";
+        return "FETCH " + matchedWords.get(new Random().nextInt(matchedWords.size())) + " 1";
+    }
+    private static String EndsWith(String suffix) {
+        List<String> matchedWords = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().toLowerCase().endsWith(suffix.toLowerCase())) {
+                    matchedWords.add(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error occurred while reading words.txt");
+            return "FETCH * 0";
+        }
+        if (matchedWords.isEmpty()) return "FETCH * 0";
+        return "FETCH " + matchedWords.get(new Random().nextInt(matchedWords.size())) + " 1";
+    }
+    private static String Contains(char letter) {
+        List<String> matchedWords = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().toLowerCase().contains(Character.toString(letter).toLowerCase())) {
+                    matchedWords.add(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error occurred while reading words.txt");
+            return "FETCH * 0";
+        }
+        if (matchedWords.isEmpty()) return "FETCH * 0";
+        return "FETCH " + matchedWords.get(new Random().nextInt(matchedWords.size())) + " 1";
+    }
 }
