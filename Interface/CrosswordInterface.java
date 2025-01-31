@@ -35,8 +35,6 @@ public class CrosswordInterface {
 	private static final String LOG_LOSS_CMD = "LOSS";
 	private static final String LOG_WIN_CMD = "WIN";
 
-	private static final String GET_GAME_CMD = "";
-
 	private static final String QUIT_CMD = "QUIT";
 
 	private static final int BUFFER_LIMIT = 1000;
@@ -196,6 +194,7 @@ public class CrosswordInterface {
 					case RESTART_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
 						toGame.println(gameSetting);
+						gameState = fromGame.readLine();
 					case CHECK_SCORE_CMD:
 						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query);
 					case CHECK_WORD_CMD:
@@ -204,6 +203,7 @@ public class CrosswordInterface {
 						toGame.println(query);
 						gameState = fromGame.readLine();
 						if (gameState == LOG_WIN_CMD) {
+							toUser.println(gameState);
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD);
 							try {
 								link.close();
@@ -212,6 +212,7 @@ public class CrosswordInterface {
 							}
 							return MENU_STATE;
 						} else if (gameState == LOG_LOSS_CMD) {
+							toUser.println(gameState);
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
 							try {
 								link.close();
@@ -231,8 +232,6 @@ public class CrosswordInterface {
 					default:
 						response = INVALID_CMD_ERR;
 					}
-
-					toGame.println();
 				}
 			} catch (IOException i) {
 				System.err.println(i.getMessage());

@@ -14,7 +14,11 @@ public class CrosswordClient {
 	private static final String USAGE = "java CrosswordClient";
 
 	private static final String MENU_UI = "\n" + "START\n" + "HISTORY\n" + "LOOKUP\n" + "ADD\n" + "REMOVE\n";
-
+	private static final String GAME_UI = "";
+	private static final String WIN_MESSAGE = "";
+	private static final String LOSS_MESSAGE = "";
+	
+	
 	private static final String INVALID_CMD_ERR = "Invalid Command.";
 	private static final String AUTH_ERR = "Incorrect or Invalid Username or Password. Please Try Again.";
 	private static final String ATTEMPTS_ERR = "Max attempts reached.";
@@ -36,6 +40,9 @@ public class CrosswordClient {
 	private static final String CHECK_SCORE_CMD = "$";
 	private static final String CHECK_WORD_CMD = "?";
 	private static final String WORD_REGEX = "[Aa-zA-Z]+";
+	
+	private static final String LOG_LOSS_CMD = "LOSS";
+	private static final String LOG_WIN_CMD = "WIN";
 
 	private static final String QUIT_CMD = "QUIT";
 
@@ -74,14 +81,45 @@ public class CrosswordClient {
 				return GAME_STATE;
 			}
 
-			response = fromServer.nextLine(); // server response
-			System.out.println(response);
+			while (true) {
+				response = fromServer.nextLine(); // server response
+				System.out.println(response);
+			}
 		}
 	}
 
 	static int game(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
-		
-		return MENU_STATE;
+		String cmd, response, gameState;
+		while (true) {
+
+			gameState = fromServer.nextLine();
+			if(gameState.equals(LOG_WIN_CMD)) {
+				System.out.println(WIN_MESSAGE);
+				return MENU_STATE;
+			} else if(gameState.equals(LOG_LOSS_CMD)) {
+				System.out.println(LOSS_MESSAGE);
+				return MENU_STATE;
+			}
+			
+			String gameDisplay = gameState.replace("+", "\n");
+			System.out.println(gameDisplay);
+
+			response = fromServer.nextLine();
+			System.out.println(response);
+
+			do {
+				cmd = userEntry.nextLine(); // send cmd to server
+			} while (cmd.isBlank());
+			toServer.println(cmd);
+			
+			String[] parsedQuery = cmd.split(" ");
+			if (parsedQuery[0].equals(END_GAME_CMD)) {
+				return MENU_STATE;
+			} else if (parsedQuery[0].equals(QUIT_CMD)) {
+				return QUIT_STATE;
+			}
+		}
+
 	}
 
 	static int login(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
