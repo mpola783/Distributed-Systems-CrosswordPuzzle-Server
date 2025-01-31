@@ -62,11 +62,11 @@ public class CrosswordGameServer {
     }
 
 
-	// Method to send a request to the word server on port 8008
+	// Method to send a request to the word server on port 666
 	private static String sendToWordServer(String query) {
     	String wordServerResponse = null;
 		
-    	try (Socket wordServerSocket = new Socket("localhost", 8008);
+    	try (Socket wordServerSocket = new Socket("localhost", 666);
         	 PrintWriter out = new PrintWriter(wordServerSocket.getOutputStream(), true);
         	 BufferedReader in = new BufferedReader(new InputStreamReader(wordServerSocket.getInputStream()))) {
 
@@ -186,7 +186,11 @@ public class CrosswordGameServer {
 		
 		//SIRNIPPLEZ add call to wordServer for random word with variable letters length
 		//This will replace the example
-		String vert_word = "example";
+		//String vert_word = "example";
+		
+		//String vertResponse = sendToWordServer("FETCH l " + words); //for when/if we add error handling
+		
+		String vert_word = sendToWordServer("FETCH l " + words).split(" ")[1];
 
 		//Randomly selected indices
 		int vert_cross_index[] = getRandomIndexes(vert_word, horiz_count);
@@ -198,19 +202,24 @@ public class CrosswordGameServer {
 
 		for (int i = 0; i < vert_cross_index.length; i++) {
 			//This will call word server to return a random word that contains the char
-			//horiz_words[i] = sendtoWordServer(vert_word.charAt(vert_cross_index[i]));
-
 			//SIRNIPPLEZ add call to 
+			String response = sendToWordServer("FETCH m " + vert_word.charAt(vert_cross_index[i]));
+			if (response.split(" ")[2] == "1"){ //checks for operation success
+				horiz_words[i] = response.split(" ")[1];
+			}
+			//calls sendToWordServer("FETCH m <char>") and returns with the 2nd element of response "FETCH <word> <bool>"
+
+			
 		}
 
 		//Testing purposes
-		vert_cross_index[0] = 0;
-		vert_cross_index[1] = 1;
-		vert_cross_index[2] = 2;
+		//vert_cross_index[0] = 0;
+		//vert_cross_index[1] = 1;
+		//vert_cross_index[2] = 2;
 
-		horiz_words[0] = "meat";
-		horiz_words[1] = "xray";
-		horiz_words[2] = "grape";
+		//horiz_words[0] = "meat";
+		//horiz_words[1] = "xray";
+		//horiz_words[2] = "grape";
 
 		// Determine horizontal cross indices based on intersection with vertical word
     	for (int i = 0; i < horiz_count; i++) {

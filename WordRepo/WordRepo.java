@@ -224,8 +224,9 @@ public class WordRepo {
         }
 
         if(tokens[1].equals("l")){ //l=length
+            int len = 0;
             try{
-                int len = Integer.parseInt(tokens[2]);
+                len = Integer.parseInt(tokens[2]);
             }
             catch (NumberFormatException ex){
                 ex.printStackTrace();
@@ -234,7 +235,7 @@ public class WordRepo {
             return FindLength(len);
         }
         else if(tokens[1].equals("m")){ //m=middle
-            return Contains(tokens[2]);
+            return Contains(tokens[2].charAt(0));
         }
         else if(tokens[1].equals("f")){ //f=first
             return StartsWith(tokens[2]);
@@ -256,7 +257,7 @@ public class WordRepo {
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                if (line.trim().length() >= minLength) {
+                if (line.trim().length() >= len) {
                     matchedWords.add(line.trim());
                 }
             }
@@ -272,7 +273,7 @@ public class WordRepo {
         }
 
         Random random = new Random();
-        String foundmWord = matchedWords.get(random.nextInt(matchedWords.size()));
+        foundWord = matchedWords.get(random.nextInt(matchedWords.size()));
         
         
         return "FETCH " + foundWord + " 1";
