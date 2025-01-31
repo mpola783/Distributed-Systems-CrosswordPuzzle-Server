@@ -235,7 +235,7 @@ public class WordRepo {
             return FindLength(len);
         }
         else if(tokens[1].equals("m")){ //m=middle
-            return Contains(tokens[2].charAt(0));
+            return Contains(tokens[2]);
         }
         else if(tokens[1].equals("f")){ //f=first
             return StartsWith(tokens[2]);
@@ -310,12 +310,12 @@ public class WordRepo {
         if (matchedWords.isEmpty()) return "FETCH * 0";
         return "FETCH " + matchedWords.get(new Random().nextInt(matchedWords.size())) + " 1";
     }
-    private static String Contains(char letter) {
+    private static String Contains(String letter) {
         List<String> matchedWords = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                if (line.trim().toLowerCase().contains(Character.toString(letter).toLowerCase())) {
+                if (line.trim().toLowerCase().contains(letter.substring(0,0).toLowerCase())) {
                     matchedWords.add(line.trim());
                 }
             }
