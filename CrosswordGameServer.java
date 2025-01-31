@@ -204,6 +204,8 @@ public class CrosswordGameServer {
 			//This will call word server to return a random word that contains the char
 			//SIRNIPPLEZ add call to 
 			String response = sendToWordServer("FETCH m " + vert_word.charAt(vert_cross_index[i]));
+			//System.out.println(response); //TESTOUTPUT FOR TROUBLESHOOTING
+			
 			if (response.split(" ")[2] == "1"){ //checks for operation success
 				horiz_words[i] = response.split(" ")[1];
 			}
