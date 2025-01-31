@@ -58,11 +58,10 @@ public class CrosswordGameServer {
             return null;
         }
         // Replace all whitespace characters
-        return input.replaceAll("\\s+", "");
+        return input.replaceAll("\\s+", " ");
     }
 
 
-	
 	// Method to send a request to the word server on port 8008
 	private static String sendToWordServer(String query) {
     	String wordServerResponse = null;
@@ -82,6 +81,7 @@ public class CrosswordGameServer {
 
         return wordServerResponse;
     }
+
 
 	//Chooses random indices of given word
 	public static int[] getRandomIndexes(String input, int n) {
@@ -119,20 +119,20 @@ public class CrosswordGameServer {
             // Calculate the length of the left side of the vertical cross
             int left_length = horiz_cross_index[i];
 			max_left = Math.max(max_left, left_length);
-			System.out.println("Left of cross" + left_length + " for " + horiz_words[i] + "\n");
+			//System.out.println("Left of cross" + left_length + " for " + horiz_words[i] + "\n");
 
 			// Calculate the length of the right side of the vertical cross
             int right_length = Math.abs(horiz_words[i].length() - (horiz_cross_index[i] + 1));
 			max_right = Math.max(max_right, right_length);
-			System.out.println("Right of cross" + right_length + " for " + horiz_words[i] + "\n");
+			//System.out.println("Right of cross" + right_length + " for " + horiz_words[i] + "\n");
         }
 
-		System.out.println("TOTAL Left of cross" + max_left + "\n");
-		System.out.println("TOTAL Right of cross" + max_right + "\n");
+		//System.out.println("TOTAL Left of cross" + max_left + "\n");
+		//System.out.println("TOTAL Right of cross" + max_right + "\n");
 		max_length = max_left + max_right + 1;
 
 		int vertical_x = max_left;
-		System.out.println("Total " + max_length + "\n");
+		//System.out.println("Total " + max_length + "\n");
 		
         return new GridDimensions(max_length, vertical_x);
     }
@@ -176,53 +176,55 @@ public class CrosswordGameServer {
 		int horiz_count = words - 1;
 		String letters = String.valueOf(words - 1);
 
-		if(words > 10) {
-			System.out.print("Words chosen is too high, limit is 10 words for this game");
-		}
-		//Fetch random vertical word with more letters than horizontal words in crossword
-		//Ex. String query = "FETCH " + letters;
-
-		//Test input words = 4
-		String vert_word = "Example";
 		String horiz_words[] = new String[horiz_count]; //will store string and index value of char
 		
 		int horiz_cross_index[] = new int[horiz_count];
+
+
+		//Fetch random vertical word with more letters than horizontal words in crossword
+		//Ex. String query = "FETCH " + letters;
+		
+		//SIRNIPPLEZ add call to wordServer for random word with variable letters length
+		//This will replace the example
+		String vert_word = "example";
+
+		//Randomly selected indices
 		int vert_cross_index[] = getRandomIndexes(vert_word, horiz_count);
 		
-
-		//Select random indices
-		System.out.println("Randomly selected indices: ");
-		for (int i = 0; i < vert_cross_index.length; i++) {
-    		
-			//System.out.print(vert_cross_index[i] + " " + vert_word.charAt(vert_cross_index[i]) + "\n");
-			//Call function sendtoWordServer with input char value at vert_word index rand_index_selection[i]
-			
-			//This will call word server to return a random word that contains the char
-			//horiz_words[i] = sendtoWordServer(vert_word.charAt(vert_cross_index[i]));
-			//horz_cross_index[i] = horiz_words[i].indexOf(vert_word.charAt(vert_cross_index[i]));
-			
+		if(words > 10) {
+			System.out.print("Words chosen is too high, limit is 10 words for this game");
 		}
 
-		vert_word = "Example";
 
-		int vert_cross_TEST[] = new int[horiz_count];
-		vert_cross_TEST[0] = 0;
-		vert_cross_TEST[1] = 1;
-		vert_cross_TEST[2] = 2;
+		for (int i = 0; i < vert_cross_index.length; i++) {
+			//This will call word server to return a random word that contains the char
+			//horiz_words[i] = sendtoWordServer(vert_word.charAt(vert_cross_index[i]));
+
+			//SIRNIPPLEZ add call to 
+		}
+
+		//Testing purposes
+		vert_cross_index[0] = 0;
+		vert_cross_index[1] = 1;
+		vert_cross_index[2] = 2;
 
 		horiz_words[0] = "meat";
 		horiz_words[1] = "xray";
 		horiz_words[2] = "grape";
 
-		/*
-		for (int i = 0; i < horiz_words.length; i++) {
-			horiz_cross_index[i] = horiz_words[i].indexOf(vert_word.charAt(vert_cross_index[i]));
-			System.out.print(horiz_cross_index[i] + "\n");
-		} */
+		// Determine horizontal cross indices based on intersection with vertical word
+    	for (int i = 0; i < horiz_count; i++) {
+        	// Convert the target character and horizontal word to uppercase
+    		char targetChar = Character.toUpperCase(vert_word.charAt(vert_cross_index[i]));
+    		String horizWordUpper = horiz_words[i].toUpperCase();
 
-		horiz_cross_index[0] = 1;
-		horiz_cross_index[1] = 0;
-		horiz_cross_index[2] = 2;
+    		// Find the index of the target character in the horizontal word
+    		horiz_cross_index[i] = horizWordUpper.indexOf(targetChar);
+
+			if (horiz_cross_index[i] < 0) {
+        		throw new IllegalArgumentException("Character '" + vert_word.charAt(vert_cross_index[i]) + "' is not found in selected word");
+    		}
+    	}
 
 		int grid_y = vert_word.length();
 		GridDimensions grid_x = getGridX(horiz_words, horiz_cross_index);
@@ -233,8 +235,7 @@ public class CrosswordGameServer {
 			horiz_cross_index[i] = grid_x.verticalX - horiz_cross_index[i];
 		}
 
-		printGrid(vert_word, grid_x, horiz_words, vert_cross_TEST, horiz_cross_index);
-
+		printGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
 
 	}
 
@@ -259,16 +260,16 @@ public class CrosswordGameServer {
     		    while (!query.equals("Quit")) {
         		    // Check if the interface has sent a message
             		if (in.hasNextLine()) { // Wait until input is available
-                		query = in.nextLine();
+                		query = in.nextLine().trim();
 
-						query = removeWhitespace(query);
+						//query = removeWhitespace(query);
 
                 		System.out.println("\nReceived the following message from Interface:" + query + "\n");
 	    	            /* Check Query for Operation arguments 
 							name/number/number
 						*/
 
-						String[] parts = query.split("/");
+						String[] parts = query.split(" ");
 
     	    	        if (parts.length == 4 || parts.length == 2) {
 							
