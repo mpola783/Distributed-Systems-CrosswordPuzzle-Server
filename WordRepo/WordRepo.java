@@ -315,7 +315,7 @@ public class WordRepo {
         try (BufferedReader br = new BufferedReader(new FileReader("words.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                if (line.trim().toLowerCase().contains(letter.substring(0,0).toLowerCase())) {
+                if (line.trim().toLowerCase().contains(letter.substring(0,1).toLowerCase())) {
                     matchedWords.add(line.trim());
                 }
             }
