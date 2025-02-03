@@ -9,6 +9,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
+import java.lang.*;
 
 public class CrosswordClient {
 	private static final String USAGE = "java CrosswordClient";
@@ -52,6 +53,8 @@ public class CrosswordClient {
 
 	private static final String INTERFACE_HOST = "localhost";
 
+	private static final int DEFUALT_STATE = 1; // FOR TESTING
+	
 	private static final int QUIT_STATE = 0;
 	private static final int LOGIN_STATE = 1;
 	private static final int MENU_STATE = 2;
@@ -124,7 +127,9 @@ public class CrosswordClient {
 
 	static int login(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 		String message, response, cmd, auth;
-
+		
+		
+		System.out.println("Logging in...");
 		do {
 			response = fromServer.nextLine(); // login prompt
 			System.out.println(response);
@@ -196,7 +201,7 @@ public class CrosswordClient {
 
 			Scanner userEntry = new Scanner(System.in);
 
-			int state = LOGIN_STATE;
+			int state =  DEFUALT_STATE;
 
 			do {
 				switch (state) {

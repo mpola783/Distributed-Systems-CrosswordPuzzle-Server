@@ -49,7 +49,7 @@ public class CrosswordInterface {
 	private static final String GAME_HOST = "localhost";
 	private static final String WORD_HOST = "localhost";
 
-	private static final int DEFUALT_STATE = 2; // FOR TESTING
+	private static final int DEFUALT_STATE = 1; // FOR TESTING
 
 	private static final int QUIT_STATE = 0;
 	private static final int LOGIN_STATE = 1;
@@ -267,13 +267,18 @@ public class CrosswordInterface {
 
 				do {
 					toUser.println(LOGIN_PROMPT);
+					System.out.println("Login prompt sent to socket: " + clientSocket);
+					
 					clientCMD = fromUser.readLine();
+					System.out.println("Response received from socket: " + clientSocket);
+					
 					if (clientCMD.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
 
 					if (!clientCMD.equals(LOGIN_USER_CMD) && !clientCMD.equals(ADD_USER_CMD)) {
 						toUser.println(INVALID_CMD_ERR);
+						System.out.println("INVALID_CMD_ERR sent to socket: " + clientSocket);
 					}
 
 				} while (!clientCMD.equals(LOGIN_USER_CMD) && !clientCMD.equals(ADD_USER_CMD));
@@ -285,15 +290,21 @@ public class CrosswordInterface {
 
 				do {
 					toUser.println("Username: ");
+					System.out.println("Username prompt sent to socket: " + clientSocket);
+					
 					username = fromUser.readLine();
+					System.out.println("Response received from socket: " + clientSocket);
 
 					if (username.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
 
 					toUser.println("Password: ");
+					System.out.println("Password prompt sent to socket: " + clientSocket);
+					
 					password = fromUser.readLine();
-
+					System.out.println("Response received from socket: " + clientSocket);
+					
 					if (password.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
@@ -319,6 +330,7 @@ public class CrosswordInterface {
 						valid = MENU_STATE;
 						clientUsername = username;
 						toUser.println(WELCOME_MESSAGE);
+						System.out.println("WELCOME_MESSAGE sent to socket: " + clientSocket);
 					}
 
 					if (valid == LOGIN_STATE) {
