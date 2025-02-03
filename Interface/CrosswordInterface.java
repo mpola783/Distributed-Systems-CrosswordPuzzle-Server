@@ -97,11 +97,10 @@ public class CrosswordInterface {
 		}
 
 		String handleUDP(String host, int port, String query) {
-
 			try {
 				// get a datagram socket
 				DatagramSocket socket = new DatagramSocket();
-
+				
 				// send request
 				byte[] requestBuf = new byte[BUFFER_LIMIT];
 				requestBuf = query.getBytes();
@@ -109,11 +108,13 @@ public class CrosswordInterface {
 				InetAddress address = InetAddress.getByName(host);
 				DatagramPacket packet = new DatagramPacket(requestBuf, requestBuf.length, address, port);
 				socket.send(packet);
+				System.out.println("Packet sent to connected server for user: " + clientUsername);
 
 				// get response
 				byte[] responseBuf = new byte[BUFFER_LIMIT];
 				packet = new DatagramPacket(responseBuf, requestBuf.length);
 				socket.receive(packet);
+				System.out.println("Packet receicved from connected server for user: " + clientUsername);
 
 				socket.close();
 
@@ -133,6 +134,8 @@ public class CrosswordInterface {
 				while (true) {
 					fromUser.mark(BUFFER_LIMIT);
 					String query = fromUser.readLine();
+					System.out.println("Command received from user: " + clientUsername);
+					
 					String[] parsedQuery = query.split(" ");
 					switch (parsedQuery[0]) {
 					case START_GAME_CMD:
@@ -140,20 +143,25 @@ public class CrosswordInterface {
 						return GAME_STATE;
 					case HISTORY_CMD:
 						toUser.println(handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query));
+						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case LOOKUP_WORD_CMD:
 						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case ADD_WORD_CMD:
 						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case REMOVE_WORD_CMD:
 						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case QUIT_CMD:
 						return QUIT_STATE;
 					default:
 						toUser.println(INVALID_CMD_ERR);
+						System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 					}
 				}
 			} catch (IOException i) {
@@ -169,15 +177,25 @@ public class CrosswordInterface {
 
 				BufferedReader fromGame = new BufferedReader(new InputStreamReader(link.getInputStream()));
 				PrintWriter toGame = new PrintWriter(link.getOutputStream());
+				System.out.println("User " + clientUsername +" connected to Game Server.");
+				
 
 				String gameSetting = fromUser.readLine(); // initial game set-up
+				System.out.println("Received game settings from user: " + clientUsername);
 				toGame.println(gameSetting);
+				System.out.println("Sending user " + clientUsername + " settings to Game Server...");
+				
 				String gameState = fromGame.readLine();
+				System.out.println("Game State returned from Game Server for user: " + clientUsername);
+				
 				String response = "";
 
 				while (true) {
 					toUser.println(gameState);
+					System.out.println("Game State sent to user: " + clientUsername);
+					
 					toUser.println(response);
+					System.out.println("Game response: \"" + response + "\" sent to user: " + clientUsername);
 
 					String query = fromUser.readLine();
 					String[] parsedQuery = query.split(" ");
@@ -193,17 +211,24 @@ public class CrosswordInterface {
 						return MENU_STATE;
 					case RESTART_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
+						System.out.println("Game restart initiated by user: " + clientUsername);
 						toGame.println(gameSetting);
+						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						gameState = fromGame.readLine();
+						System.out.println("Game State returned from Game Server for user: " + clientUsername);
 					case CHECK_SCORE_CMD:
 						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query);
 					case CHECK_WORD_CMD:
 						response = handleUDP(WORD_HOST, WORD_PORT, query);
 					case WORD_REGEX:
 						toGame.println(query);
+						System.out.println("User " + clientUsername + " sent guess to Game Server.");
 						gameState = fromGame.readLine();
+						System.out.println("Game State returned from Game Server for user: " + clientUsername);
 						if (gameState == LOG_WIN_CMD) {
 							toUser.println(gameState);
+							System.out.println("Win Message sent to user: " + clientUsername);
+							
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD);
 							try {
 								link.close();
@@ -213,6 +238,8 @@ public class CrosswordInterface {
 							return MENU_STATE;
 						} else if (gameState == LOG_LOSS_CMD) {
 							toUser.println(gameState);
+							System.out.println("Loss Message sent to user: " + clientUsername);
+							
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
 							try {
 								link.close();
@@ -251,7 +278,6 @@ public class CrosswordInterface {
 				System.out.println("Error: " + i.getMessage());
 				return MENU_STATE;
 			}
-
 		}
 
 		int login(BufferedReader fromUser, PrintStream toUser) {
@@ -275,12 +301,11 @@ public class CrosswordInterface {
 					if (clientCMD.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
-
+					
 					if (!clientCMD.equals(LOGIN_USER_CMD) && !clientCMD.equals(ADD_USER_CMD)) {
 						toUser.println(INVALID_CMD_ERR);
 						System.out.println("INVALID_CMD_ERR sent to socket: " + clientSocket);
 					}
-
 				} while (!clientCMD.equals(LOGIN_USER_CMD) && !clientCMD.equals(ADD_USER_CMD));
 
 				DatagramSocket socket = new DatagramSocket();
@@ -319,12 +344,15 @@ public class CrosswordInterface {
 
 					InetAddress address = InetAddress.getByName(host);
 					DatagramPacket packet = new DatagramPacket(userBuf, userBuf.length, address, port);
+					
 					socket.send(packet);
+					System.out.println("Verification packet sent to Account Server.");
 
 					// get response
 					byte[] responseBuf = new byte[BUFFER_LIMIT];
 					packet = new DatagramPacket(responseBuf, userBuf.length);
 					socket.receive(packet);
+					System.out.println("Account Server response received.");
 
 					if (Boolean.parseBoolean(packet.toString())) {
 						valid = MENU_STATE;
@@ -335,10 +363,12 @@ public class CrosswordInterface {
 
 					if (valid == LOGIN_STATE) {
 						toUser.println(AUTH_ERR);
+						System.out.println("AUTH_ERR sent to socket: " + clientSocket);
 						if (clientCMD.equals(LOGIN_USER_CMD)) {
 							attempts++;
 							if (attempts <= MAX_ATTEMPTS) {
 								toUser.println((MAX_ATTEMPTS - attempts) + " attempts left.");
+								System.out.println("Remaining attempts sent to socket: " + clientSocket);
 							}
 						}
 					}
@@ -346,6 +376,7 @@ public class CrosswordInterface {
 
 				if (valid == LOGIN_STATE) {
 					toUser.println(ATTEMPTS_ERR);
+					System.out.println("ATTEMPTS_ERR sent to socket: " + clientSocket);
 					valid = QUIT_STATE;
 				}
 
