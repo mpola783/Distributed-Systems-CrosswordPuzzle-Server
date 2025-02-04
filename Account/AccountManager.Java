@@ -39,6 +39,9 @@ public class AccountManager {
 
     private static String handleRequest(String request) {
         String[] tokens = request.split(" ");
+        System.out.println("Token count: " + tokens.length);
+        for (int i = 0; i < tokens.length; i++) {
+            System.out.println("Token " + i + ": '" + tokens[i] + "'");}
         if (tokens.length < 2) return "ERROR Invalid Request";
 
         String command = tokens[0].toUpperCase();
@@ -58,7 +61,7 @@ public class AccountManager {
                 return updateScore(name, false);
             default:
                 return "ERROR Unknown Command";
-        }
+        }   
     }
 
     private static String loginUser(String name, String password) {
