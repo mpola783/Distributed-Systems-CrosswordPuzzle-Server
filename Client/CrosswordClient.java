@@ -34,6 +34,8 @@ public class CrosswordClient {
 
 	private static final String LOG_LOSS_CMD = "LOSS";
 	private static final String LOG_WIN_CMD = "WIN";
+	
+	private static final String GAME_RESPONSE_ERR = "FAIL";
 
 	private static final String QUIT_CMD = "QUIT";
 
@@ -100,13 +102,16 @@ public class CrosswordClient {
 	static int game(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 		String cmd, response, gameResponse, gameCounter, gameState;
 		while (true) {
-			
 			gameResponse = fromServer.nextLine();
+			
 			if (gameResponse.equals(LOG_WIN_CMD)) {
 				System.out.println(WIN_MESSAGE);
 				return MENU_STATE;
 			} else if (gameResponse.equals(LOG_LOSS_CMD)) {
 				System.out.println(LOSS_MESSAGE);
+				return MENU_STATE;
+			} else if (gameResponse.equals(GAME_RESPONSE_ERR)){
+				System.out.println("Error receiving game state data.");
 				return MENU_STATE;
 			}
 			

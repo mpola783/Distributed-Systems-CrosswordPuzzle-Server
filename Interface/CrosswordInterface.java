@@ -283,12 +283,12 @@ public class CrosswordInterface {
 				toGame.println(gameSetting);
 				System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 				System.out.println("Settings: " + gameSetting);
+				
 				gameResponse = fromGame.readLine();
-				System.out.println("Game server responded to user: " + clientUsername);
-				System.out.println("Response: " + gameResponse);
-
-
 				String[] parsedGameResponse = gameResponse.split(" ");
+				
+				System.out.println("Game server responded to user: " + clientUsername);
+				System.out.println("Response: " + parsedGameResponse[0]);
 				
 				if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 					System.out.println("Error receiving game state data for user: " + clientUsername);
@@ -304,8 +304,8 @@ public class CrosswordInterface {
 				System.out.println("Game State: " + gameState);
 
 				while (true) {
-					toUser.println(gameResponse);
-					System.out.println("Game response: \"" + gameResponse + "\" sent to user: " + clientUsername);
+					toUser.println(parsedGameResponse[0]);
+					System.out.println("Game response: \"" + parsedGameResponse[0] + "\" sent to user: " + clientUsername);
 
 					toUser.println(gameCounter);
 					System.out.println("Game counter: \"" + gameCounter + "\" sent to user: " + clientUsername);
@@ -334,11 +334,11 @@ public class CrosswordInterface {
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						System.out.println("Settings: " + gameSetting);
-						gameResponse = fromGame.readLine();
-						System.out.println("Game server responded to user: " + clientUsername);
-						System.out.println("Response: " + gameResponse);
 						
+						gameResponse = fromGame.readLine();
 						parsedGameResponse = gameResponse.split(" ");
+						System.out.println("Game server responded to user: " + clientUsername);
+						System.out.println("Response: " + parsedGameResponse[0]);
 						
 						if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 							System.out.println("Error receiving game state data for user: " + clientUsername);
@@ -368,11 +368,12 @@ public class CrosswordInterface {
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						System.out.println("Settings: " + gameSetting);
-						gameResponse = fromGame.readLine();
-						System.out.println("Game server responded to user: " + clientUsername);
-						System.out.println("Response: " + gameResponse);
 						
+						gameResponse = fromGame.readLine();
 						parsedGameResponse = gameResponse.split(" ");
+						
+						System.out.println("Game server responded to user: " + clientUsername);
+						System.out.println("Response: " + parsedGameResponse[0]);
 						
 						if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 							System.out.println("Error receiving game state data for user: " + clientUsername);
