@@ -5,6 +5,23 @@ import java.util.concurrent.Executors;
 
 import java.io.*;
 
+/**
+ * @author Tin Toone
+ * 
+ *         COMP 4635 - Distributed Systems - Winter 2025
+ * 
+ *         Code Reference: Course Material provided by Instructor Maryam Elahi
+ * 
+ *         Description: This program provides a middle-man between a client node
+ *         (connected by TCP) and a set of server nodes (connected by UDP or
+ *         TCP), allowing the client to play a crossword game. Each client is
+ *         handled by its own thread.
+ *         
+ *         Implementation Notes:
+ *         - The user and interface both exist in one of four 'states'.
+ *         			+ The login state, in which the client has not been verified as a user yet.
+ *     
+ */
 public class CrosswordInterface {
 	private static final String USAGE = "Usage: java CrosswordInterface";
 	private static final String LOGIN_PROMPT = "LOGIN   OR   NEW   OR   QUIT";
@@ -40,7 +57,6 @@ public class CrosswordInterface {
 	private static final int BUFFER_LIMIT = 1000;
 
 	private static final int INTERFACE_PORT = 69;
-
 	private static final int ACCOUNT_PORT = 6969;
 	private static final int GAME_PORT = 420;
 	private static final int WORD_PORT = 666;
@@ -76,7 +92,6 @@ public class CrosswordInterface {
 			while (true) {
 				fixedThreadPool.execute(new CrosswordClientHandler(server.accept()));
 			}
-
 		} catch (IOException i) {
 			System.out.println(
 					"Exception caught when trying to listen on port " + port + " or listening for a connection");
@@ -96,11 +111,29 @@ public class CrosswordInterface {
 			this.clientSocket = socket;
 		}
 
+		/**
+		 * @param host
+		 * 
+		 *              The host of the target server.
+		 * 
+		 * @param port
+		 * 
+		 *              The target port at the target server.
+		 * 
+		 * @param query
+		 * 
+		 *              The query to be sent to the target server.
+		 * 
+		 * @return response
+		 * 
+		 *         The response received from the target server.
+		 * 
+		 */
 		String handleUDP(String host, int port, String query) {
 			try {
 				// get a datagram socket
 				DatagramSocket socket = new DatagramSocket();
-				
+
 				// send request
 				byte[] requestBuf = new byte[BUFFER_LIMIT];
 				requestBuf = query.getBytes();
@@ -129,13 +162,31 @@ public class CrosswordInterface {
 
 		}
 
+		/**
+		 * @param fromUser
+		 * 
+		 *                 This is an input stream, assumed to be receiving input from a
+		 *                 client node.
+		 * 
+		 * @param toUser
+		 * 
+		 *                 This is an output stream, assumed to be sending output to a
+		 *                 client node.
+		 * 
+		 * @return state
+		 * 
+		 *         This is an integer, representing the current thread's state.
+		 * 
+		 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+		 * 
+		 */
 		int menu(BufferedReader fromUser, PrintStream toUser) {
 			try {
 				while (true) {
 					fromUser.mark(BUFFER_LIMIT);
 					String query = fromUser.readLine();
 					System.out.println("Command received from user: " + clientUsername);
-					
+
 					String[] parsedQuery = query.split(" ");
 					switch (parsedQuery[0]) {
 					case START_GAME_CMD:
@@ -169,6 +220,24 @@ public class CrosswordInterface {
 			}
 		}
 
+		/**
+		 * @param fromUser
+		 * 
+		 *                 This is an input stream, assumed to be receiving input from a
+		 *                 client node.
+		 * 
+		 * @param toUser
+		 * 
+		 *                 This is an output stream, assumed to be sending output to a
+		 *                 client node.
+		 * 
+		 * @return state
+		 * 
+		 *         This is an integer, representing the current thread's state.
+		 * 
+		 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+		 * 
+		 */
 		int game(BufferedReader fromUser, PrintStream toUser) {
 			Socket link = null;
 
@@ -177,23 +246,22 @@ public class CrosswordInterface {
 
 				BufferedReader fromGame = new BufferedReader(new InputStreamReader(link.getInputStream()));
 				PrintWriter toGame = new PrintWriter(link.getOutputStream());
-				System.out.println("User " + clientUsername +" connected to Game Server.");
-				
+				System.out.println("User " + clientUsername + " connected to Game Server.");
 
 				String gameSetting = fromUser.readLine(); // initial game set-up
 				System.out.println("Received game settings from user: " + clientUsername);
 				toGame.println(gameSetting);
 				System.out.println("Sending user " + clientUsername + " settings to Game Server...");
-				
+
 				String gameState = fromGame.readLine();
 				System.out.println("Game State returned from Game Server for user: " + clientUsername);
-				
+
 				String response = "";
 
 				while (true) {
 					toUser.println(gameState);
 					System.out.println("Game State sent to user: " + clientUsername);
-					
+
 					toUser.println(response);
 					System.out.println("Game response: \"" + response + "\" sent to user: " + clientUsername);
 
@@ -228,7 +296,7 @@ public class CrosswordInterface {
 						if (gameState == LOG_WIN_CMD) {
 							toUser.println(gameState);
 							System.out.println("Win Message sent to user: " + clientUsername);
-							
+
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD);
 							try {
 								link.close();
@@ -239,7 +307,7 @@ public class CrosswordInterface {
 						} else if (gameState == LOG_LOSS_CMD) {
 							toUser.println(gameState);
 							System.out.println("Loss Message sent to user: " + clientUsername);
-							
+
 							handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
 							try {
 								link.close();
@@ -272,7 +340,7 @@ public class CrosswordInterface {
 			}
 
 			try {
-				link.close(); // Step 4.
+				link.close();
 				return MENU_STATE;
 			} catch (IOException i) {
 				System.out.println("Error: " + i.getMessage());
@@ -280,6 +348,24 @@ public class CrosswordInterface {
 			}
 		}
 
+		/**
+		 * @param fromUser
+		 * 
+		 *                 This is an input stream, assumed to be receiving input from a
+		 *                 client node.
+		 * 
+		 * @param toUser
+		 * 
+		 *                 This is an output stream, assumed to be sending output to a
+		 *                 client node.
+		 * 
+		 * @return state
+		 * 
+		 *         This is an integer, representing the current thread's state.
+		 * 
+		 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+		 * 
+		 */
 		int login(BufferedReader fromUser, PrintStream toUser) {
 			String host = ACCOUNT_HOST;
 			int port = ACCOUNT_PORT;
@@ -294,14 +380,14 @@ public class CrosswordInterface {
 				do {
 					toUser.println(LOGIN_PROMPT);
 					System.out.println("Login prompt sent to socket: " + clientSocket);
-					
+
 					clientCMD = fromUser.readLine();
 					System.out.println("Response received from socket: " + clientSocket);
-					
+
 					if (clientCMD.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
-					
+
 					if (!clientCMD.equals(LOGIN_USER_CMD) && !clientCMD.equals(ADD_USER_CMD)) {
 						toUser.println(INVALID_CMD_ERR);
 						System.out.println("INVALID_CMD_ERR sent to socket: " + clientSocket);
@@ -316,7 +402,7 @@ public class CrosswordInterface {
 				do {
 					toUser.println("Username: ");
 					System.out.println("Username prompt sent to socket: " + clientSocket);
-					
+
 					username = fromUser.readLine();
 					System.out.println("Response received from socket: " + clientSocket);
 
@@ -326,10 +412,10 @@ public class CrosswordInterface {
 
 					toUser.println("Password: ");
 					System.out.println("Password prompt sent to socket: " + clientSocket);
-					
+
 					password = fromUser.readLine();
 					System.out.println("Response received from socket: " + clientSocket);
-					
+
 					if (password.equals(QUIT_CMD)) {
 						return QUIT_STATE;
 					}
@@ -344,7 +430,7 @@ public class CrosswordInterface {
 
 					InetAddress address = InetAddress.getByName(host);
 					DatagramPacket packet = new DatagramPacket(userBuf, userBuf.length, address, port);
-					
+
 					socket.send(packet);
 					System.out.println("Verification packet sent to Account Server.");
 
@@ -381,7 +467,6 @@ public class CrosswordInterface {
 				}
 
 				socket.close();
-
 			} catch (NumberFormatException n) {
 				System.err.println("Invalid port number: " + port + ".");
 				return QUIT_STATE;
@@ -423,7 +508,6 @@ public class CrosswordInterface {
 
 				fromUser.close();
 				toUser.close();
-
 			} catch (SocketException e) {
 				System.out.println("Error: " + e.getMessage());
 			} catch (Exception e) {

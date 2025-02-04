@@ -1,0 +1,8 @@
+*.class
+Account/.project
+Game/.classpath
+Game/.project
+Interface/CrosswordInterface.class
+Interface/CrosswordInterface$CrosswordClientHandler.class
+WordRepo/.classpath
+WordRepo/.project
