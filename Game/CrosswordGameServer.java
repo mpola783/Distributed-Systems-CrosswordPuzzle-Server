@@ -11,7 +11,15 @@ import java.io.*;
 
 public class CrosswordGameServer {
 	private static final String USAGE = "Usage: java CrosswordGameServer [port]";
-	
+	private static final int BUFFER_LIMIT = 1024;
+
+	private static char[][] finishedGrid;
+    private static char[][] userGrid;
+
+	private static String[] game_words;
+	private static String[] word_guessed;
+	private static char[] letters_guessed;
+	private static int lives;
 
 	public static void main(String[] args) throws IOException {
 		if (args.length != 1) {
@@ -61,26 +69,33 @@ public class CrosswordGameServer {
         return input.replaceAll("\\s+", " ");
     }
 
-
-	// Method to send a request to the word server on port 666
-	private static String sendToWordServer(String query) {
-    	String wordServerResponse = null;
+	// UDP Communication with WordServer
+	private static String sendToWordServerUDP(String query) {
+	    String wordServerResponse = null;
 		
-    	try (Socket wordServerSocket = new Socket("localhost", 666);
-        	 PrintWriter out = new PrintWriter(wordServerSocket.getOutputStream(), true);
-        	 BufferedReader in = new BufferedReader(new InputStreamReader(wordServerSocket.getInputStream()))) {
+	    try (DatagramSocket socket = new DatagramSocket()) {
+	        // Prepare request buffer
+	        byte[] requestBuf = query.getBytes();
+    	    InetAddress address = InetAddress.getByName("localhost");
+    	    DatagramPacket requestPacket = new DatagramPacket(requestBuf, requestBuf.length, address, 666);
 
-            out.println(query);
+    	    // Send the request
+    	    socket.send(requestPacket);
 
-            // Read the response from the game server
-            wordServerResponse = in.readLine();
+    	    // Prepare response buffer and receive response
+    	    byte[] responseBuf = new byte[BUFFER_LIMIT];
+    	    DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
+    	    socket.receive(responsePacket);
 
-        } catch (IOException e) {
-            System.out.println("Error communicating with the game server: " + e.getMessage());
-        }
+    	    // Extract the response
+    	    wordServerResponse = new String(responsePacket.getData(), 0, responsePacket.getLength());
 
-        return wordServerResponse;
-    }
+    	} catch (IOException e) {
+    	    System.err.println("Error communicating with the WordServer: " + e.getMessage());
+    	}
+
+    	return wordServerResponse;
+	}
 
 
 	//Chooses random indices of given word
@@ -119,136 +134,176 @@ public class CrosswordGameServer {
             // Calculate the length of the left side of the vertical cross
             int left_length = horiz_cross_index[i];
 			max_left = Math.max(max_left, left_length);
-			//System.out.println("Left of cross" + left_length + " for " + horiz_words[i] + "\n");
 
 			// Calculate the length of the right side of the vertical cross
             int right_length = Math.abs(horiz_words[i].length() - (horiz_cross_index[i] + 1));
 			max_right = Math.max(max_right, right_length);
-			//System.out.println("Right of cross" + right_length + " for " + horiz_words[i] + "\n");
         }
 
-		//System.out.println("TOTAL Left of cross" + max_left + "\n");
-		//System.out.println("TOTAL Right of cross" + max_right + "\n");
-		max_length = max_left + max_right + 1;
+		max_length = max_left + max_right;
 
 		int vertical_x = max_left;
-		//System.out.println("Total " + max_length + "\n");
 		
         return new GridDimensions(max_length, vertical_x);
     }
 
-	// Function to print the grid
-    public static void printGrid(String vert_word, GridDimensions grid_x, String[] horiz_words, int[] vert_cross_TEST, int[] horiz_cross_index) {
-        int grid_y = vert_word.length();
-        int grid_x_max = grid_x.maxLength;
+	// Function to store the grid
+    public static char[][] createGrid(String vert_word, GridDimensions grid_x, String[] horiz_words, int[] vert_cross_index, int[] horiz_cross_index) {
+    	int grid_y = vert_word.length();
+    	int grid_x_max = grid_x.maxLength;
 
-        // Iterate over rows
-        for (int y = 0; y < grid_y; y++) {
-            StringBuilder row = new StringBuilder();
-
-            // Iterate over columns
-            for (int x = 0; x <= grid_x_max; x++) {
-                char cell = '.';
-
-                // Check if it's part of the vertical word
-                if (x == grid_x.verticalX && y < vert_word.length()) {
-                    cell = vert_word.charAt(y);
-                }
-
-                // Check if it's part of a horizontal word
-                for (int i = 0; i < horiz_words.length; i++) {
-                    if (y == vert_cross_TEST[i] && x >= horiz_cross_index[i] && x < horiz_cross_index[i] + horiz_words[i].length()) {
-                        cell = horiz_words[i].charAt(x - horiz_cross_index[i]);
-                    }
-                }
-
-                row.append(cell);
-            }
-
-            row.append('+'); // End each line with '+'
-            System.out.println(row);
-        }
-    }
-
-
-	public static void newGame(int words, int faults) {
-		
-		int horiz_count = words - 1;
-		String letters = String.valueOf(words - 1);
-
-		String horiz_words[] = new String[horiz_count]; //will store string and index value of char
-		
-		int horiz_cross_index[] = new int[horiz_count];
-
-
-		//Fetch random vertical word with more letters than horizontal words in crossword
-		//Ex. String query = "FETCH " + letters;
-		
-		//SIRNIPPLEZ add call to wordServer for random word with variable letters length
-		//This will replace the example
-		//String vert_word = "example";
-		
-		//String vertResponse = sendToWordServer("FETCH l " + words); //for when/if we add error handling
-		
-		String vert_word = sendToWordServer("FETCH l " + words).split(" ")[1];
-
-		//Randomly selected indices
-		int vert_cross_index[] = getRandomIndexes(vert_word, horiz_count);
-		
-		if(words > 10) {
-			System.out.print("Words chosen is too high, limit is 10 words for this game");
-		}
-
-
-		for (int i = 0; i < vert_cross_index.length; i++) {
-			//This will call word server to return a random word that contains the char
-			//SIRNIPPLEZ add call to 
-			String response = sendToWordServer("FETCH m " + vert_word.charAt(vert_cross_index[i]));
-			//System.out.println(response); //TESTOUTPUT FOR TROUBLESHOOTING
-			
-			if (response.split(" ")[2] == "1"){ //checks for operation success
-				horiz_words[i] = response.split(" ")[1];
-			}
-			//calls sendToWordServer("FETCH m <char>") and returns with the 2nd element of response "FETCH <word> <bool>"
-
-			
-		}
-
-		//Testing purposes
-		//vert_cross_index[0] = 0;
-		//vert_cross_index[1] = 1;
-		//vert_cross_index[2] = 2;
-
-		//horiz_words[0] = "meat";
-		//horiz_words[1] = "xray";
-		//horiz_words[2] = "grape";
-
-		// Determine horizontal cross indices based on intersection with vertical word
-    	for (int i = 0; i < horiz_count; i++) {
-        	// Convert the target character and horizontal word to uppercase
-    		char targetChar = Character.toUpperCase(vert_word.charAt(vert_cross_index[i]));
-    		String horizWordUpper = horiz_words[i].toUpperCase();
-
-    		// Find the index of the target character in the horizontal word
-    		horiz_cross_index[i] = horizWordUpper.indexOf(targetChar);
-
-			if (horiz_cross_index[i] < 0) {
-        		throw new IllegalArgumentException("Character '" + vert_word.charAt(vert_cross_index[i]) + "' is not found in selected word");
-    		}
+    	// Initialize the 2D array with '.' as default
+    	char[][] grid = new char[grid_y][grid_x_max + 1];  // Extra column for '+'
+    	for (int y = 0; y < grid_y; y++) {
+    	    for (int x = 0; x <= grid_x_max; x++) {
+    	        grid[y][x] = '.';
+    	    }
     	}
 
-		int grid_y = vert_word.length();
-		GridDimensions grid_x = getGridX(horiz_words, horiz_cross_index);
-	
-		System.out.println("Vertical word starts at: " + grid_x.verticalX + " with Max length of: " + grid_x.maxLength + "\n\n");
-		
-		for (int i = 0; i < horiz_cross_index.length; i++) {
-			horiz_cross_index[i] = grid_x.verticalX - horiz_cross_index[i];
-		}
+    	// Fill the vertical word
+    	for (int y = 0; y < vert_word.length(); y++) {
+    	    grid[y][grid_x.verticalX] = Character.toUpperCase(vert_word.charAt(y));
+    	}
 
-		printGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
+    	// Fill the horizontal words
+    	for (int i = 0; i < horiz_words.length; i++) {
+    	    for (int x = 0; x < horiz_words[i].length(); x++) {
+    	        grid[vert_cross_index[i]][horiz_cross_index[i] + x] = Character.toUpperCase(horiz_words[i].charAt(x));
+    	    }
+    	}
 
+		return grid;  // Return the generated 2D grid
 	}
+   
+	public static void printGrid(char[][] grid) {
+    	for (char[] row : grid) {
+    	    System.out.println(new String(row) + "+");  // Append '+' at the end of each row
+    	}
+	}
+
+	public static char[][] maskGrid(char[][] grid) {
+    	int rows = grid.length;
+    	int cols = grid[0].length;
+    	char[][] maskedGrid = new char[rows][cols];
+
+    	for (int y = 0; y < rows; y++) {
+    	    for (int x = 0; x < cols; x++) {
+    	        char cell = grid[y][x];
+				// Replace all characters except '.'
+    	        if (cell != '.') {
+    	            maskedGrid[y][x] = '-';
+    	        } else {
+    	            maskedGrid[y][x] = cell;
+    	        }
+    	    }
+    	}
+    	return maskedGrid;
+	}
+
+	public static int countLetters(char[][] grid) {
+        int count = 0;
+
+        for (int i = 0; i < grid.length; i++) {
+            for (int j = 0; j < grid[i].length; j++) {
+                if (grid[i][j] == '-') {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+	    public static void newGame(PrintStream out, int words, int faults) {
+
+        if (words > 10) {
+            System.out.println("Words chosen is too high, limit is 10 words for this game");
+            return;
+        }
+
+
+        int horiz_count = words - 1;
+        String[] horiz_words = new String[horiz_count];
+        int[] horiz_cross_index = new int[horiz_count];
+        int[] vert_cross_index = new int[horiz_count];
+
+        // Initialize global arrays
+        CrosswordGameServer.game_words = new String[words];
+        CrosswordGameServer.word_guessed = new String[words];
+        CrosswordGameServer.letters_guessed = new char[words];
+
+        // Fetch vertical word
+        String word_query = "FETCH l " + horiz_count;
+        String return_query = sendToWordServerUDP(word_query);
+        String[] parts_vert = return_query.split(" ");
+
+        if (parts_vert.length != 3 || !parts_vert[2].equals("1")) {
+            throw new RuntimeException("Error: Invalid response from word server for query: " + word_query);
+        }
+
+        String vert_word = parts_vert[1];
+        CrosswordGameServer.game_words[0] = vert_word;
+
+        System.out.println("\nVert Word: " + vert_word + "\n");
+
+        // Select random indices for vertical-horizontal crossing
+        vert_cross_index = getRandomIndexes(vert_word, horiz_count);
+
+        // Fetch horizontal words containing characters from the vertical word
+        for (int i = 0; i < horiz_count; i++) {
+            char contains = vert_word.charAt(vert_cross_index[i]);
+            word_query = "FETCH m " + contains;
+            return_query = sendToWordServerUDP(word_query);
+            String[] parts = return_query.split(" ");
+
+            if (parts.length != 3 || !parts[2].equals("1")) {
+                throw new RuntimeException("Error: Invalid response from word server for query: " + word_query);
+            }
+
+            horiz_words[i] = parts[1];
+            System.out.println("\n" + horiz_words[i] + " ");
+        }
+
+        // Determine horizontal cross indices
+        for (int i = 0; i < horiz_count; i++) {
+            char targetChar = Character.toUpperCase(vert_word.charAt(vert_cross_index[i]));
+            String horizWordUpper = horiz_words[i].toUpperCase();
+            horiz_cross_index[i] = horizWordUpper.indexOf(targetChar);
+
+            if (horiz_cross_index[i] < 0) {
+                throw new IllegalArgumentException(
+                    "Character '" + vert_word.charAt(vert_cross_index[i]) + "' is not found in selected word");
+            }
+        }
+
+        // Determine grid size
+        GridDimensions grid_x = getGridX(horiz_words, horiz_cross_index);
+        int grid_y = vert_word.length();
+
+        System.out.println("Vertical word starts at: " + grid_x.verticalX + " with Max length of: " + grid_x.maxLength + "\n\n");
+
+        for (int i = 0; i < horiz_count; i++) {
+            horiz_cross_index[i] = grid_x.verticalX - horiz_cross_index[i];
+        }
+
+        // Create and mask grid
+        CrosswordGameServer.finishedGrid = createGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
+        CrosswordGameServer.userGrid = maskGrid(CrosswordGameServer.finishedGrid);
+
+		//Counts letters in game
+		int num_letters = countLetters(userGrid);
+		CrosswordGameServer.lives = faults * num_letters;
+		System.out.print("Fault counter: " + CrosswordGameServer.lives + "\n");
+
+        // Print grids
+		for (char[] row : finishedGrid) {
+    	    out.println(new String(row) + "+");  // Append '+' at the end of each row
+    	}
+
+        printGrid(CrosswordGameServer.finishedGrid);
+        System.out.print("\n");
+        printGrid(CrosswordGameServer.userGrid);
+    }
 
 
 	private static class CrosswordInterfaceHandler implements Runnable {
@@ -293,7 +348,7 @@ public class CrosswordGameServer {
 
 									if(parts[2].matches("\\d+") && parts[3].matches("\\d+")) {
 										out.print("Starting New Game\n\n");
-										newGame(Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+										newGame(out, Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
 									}
 
 									else {
