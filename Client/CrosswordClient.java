@@ -83,10 +83,10 @@ public class CrosswordClient {
 				return GAME_STATE;
 			}
 
-			while (true) {
-				response = fromServer.nextLine(); // server response
-				System.out.println(response);
-			}
+			
+			response = fromServer.nextLine(); // server response
+			System.out.println(response);
+			
 		}
 	}
 

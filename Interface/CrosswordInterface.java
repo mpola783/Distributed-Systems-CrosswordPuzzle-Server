@@ -264,9 +264,10 @@ public class CrosswordInterface {
 					toGame.println(gameSetting);
 					System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 					gameResponse = fromGame.readLine();
+					System.out.println("Game server responded to user: ");
 					if(gameResponse.equals(GAME_RESPONSE_ERR)) {
 						System.out.println("Error receiving game state data for user: " + clientUsername);
-					}
+					} 
 				} while (!gameResponse.equals(GAME_RESPONSE_CMD));
 
 				String gameCounter = fromGame.readLine();
