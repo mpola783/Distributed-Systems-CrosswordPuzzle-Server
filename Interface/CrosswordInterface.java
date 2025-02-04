@@ -354,7 +354,7 @@ public class CrosswordInterface {
 					socket.receive(packet);
 					System.out.println("Account Server response received.");
 
-					if (Boolean.parseBoolean(packet.toString())) {
+					if (packet.toString().endsWith("1")) {
 						valid = MENU_STATE;
 						clientUsername = username;
 						toUser.println(WELCOME_MESSAGE);
