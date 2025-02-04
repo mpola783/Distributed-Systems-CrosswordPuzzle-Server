@@ -76,6 +76,8 @@ public class CrosswordClient {
 				cmd = userEntry.nextLine(); // send cmd to server
 			} while (cmd.isBlank());
 			toServer.println(cmd);
+			
+			String[] parsedCMD = cmd.split(" ");
 
 			if (cmd.equals(QUIT_CMD)) { // quit check
 				return QUIT_STATE;
@@ -83,12 +85,11 @@ public class CrosswordClient {
 			
 			response = fromServer.nextLine(); // server response
 			
-			if (cmd.equals(START_GAME_CMD) && response.equals("SUCCESS")) { // start check
+			if (parsedCMD[0].equals(START_GAME_CMD) && response.equals("SUCCESS")) { // start check
 				return GAME_STATE;
 			}
 			
 			System.out.println(response);
-			
 		}
 	}
 

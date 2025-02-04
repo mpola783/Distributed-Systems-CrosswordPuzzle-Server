@@ -191,12 +191,13 @@ public class CrosswordInterface {
 				while (true) {
 					fromUser.mark(BUFFER_LIMIT);
 					String query = fromUser.readLine();
+					String response = "";
 					System.out.println("Command received from user: " + clientUsername);
 
 					String[] parsedQuery = query.split(" ");
 					switch (parsedQuery[0]) {
 					case START_GAME_CMD:
-						if (parsedQuery.length == 1) {
+						if (parsedQuery.length != 3) {
 							toUser.println(INVALID_CMD_ERR);
 							System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 							break;
@@ -209,29 +210,45 @@ public class CrosswordInterface {
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case LOOKUP_WORD_CMD:
-						if (parsedQuery.length == 1) {
+						if (parsedQuery.length != 2) {
 							toUser.println(INVALID_CMD_ERR);
 							System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 							break;
 						}
-						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						if(Integer.parseInt(response) == 1) {
+							toUser.println("Word found!");
+						} else {
+							toUser.println("Word not found!");
+						}
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case ADD_WORD_CMD:
-						if (parsedQuery.length == 1) {
+						if (parsedQuery.length != 2) {
 							toUser.println(INVALID_CMD_ERR);
 							break;
 						}
-						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						if(Integer.parseInt(response) == 1) {
+							toUser.println("Word added!");
+						} else {
+							toUser.println("Word not added!");
+						}
+						
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case REMOVE_WORD_CMD:
-						if (parsedQuery.length == 1) {
+						if (parsedQuery.length != 2) {
 							toUser.println(INVALID_CMD_ERR);
 							System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 							break;
 						}
-						toUser.println(handleUDP(WORD_HOST, WORD_PORT, query));
+						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						if(Integer.parseInt(response) == 1) {
+							toUser.println("Word removed!");
+						} else {
+							toUser.println("Word not removed!");
+						}
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case QUIT_CMD:
