@@ -78,13 +78,13 @@ public class CrosswordClient {
 			if (cmd.equals(QUIT_CMD)) { // quit check
 				return QUIT_STATE;
 			}
-
-			if (cmd.equals(START_GAME_CMD)) { // start check
-				return GAME_STATE;
-			}
-
 			
 			response = fromServer.nextLine(); // server response
+			
+			if (cmd.equals(START_GAME_CMD) && response.equals("SUCCESS")) { // start check
+				return GAME_STATE;
+			}
+			
 			System.out.println(response);
 			
 		}
