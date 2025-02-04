@@ -119,8 +119,7 @@ public class CrosswordClient {
 				System.out.println(row);
 			}
 			
-			
-			System.out.println(gameDisplay);
+			System.out.println("Counter: " + gameCounter);
 
 			response = fromServer.nextLine();
 			System.out.println(response);

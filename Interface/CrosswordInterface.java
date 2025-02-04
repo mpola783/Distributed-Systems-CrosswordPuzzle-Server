@@ -317,9 +317,7 @@ public class CrosswordInterface {
 						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query);
 					case CHECK_WORD_CMD:
 						response = handleUDP(WORD_HOST, WORD_PORT, query);
-					case WORD_REGEX:
-		
-						
+					case WORD_REGEX:	
 						do {
 							toGame.println(GAME_CHECK_CMD + " " + query);
 							System.out.println("User " + clientUsername + " sent guess to Game Server.");
