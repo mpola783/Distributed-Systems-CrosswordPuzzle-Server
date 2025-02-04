@@ -318,12 +318,11 @@ public class CrosswordInterface {
 					case CHECK_WORD_CMD:
 						response = handleUDP(WORD_HOST, WORD_PORT, query);
 					case WORD_REGEX:
-						toGame.println(GAME_CHECK_CMD + " " + query);
-						System.out.println("User " + clientUsername + " sent guess to Game Server.");
+		
 						
 						do {
-							toGame.println(gameSetting);
-							System.out.println("Sending user " + clientUsername + " settings to Game Server...");
+							toGame.println(GAME_CHECK_CMD + " " + query);
+							System.out.println("User " + clientUsername + " sent guess to Game Server.");
 							gameResponse = fromGame.readLine();
 							if(gameResponse.equals(GAME_RESPONSE_ERR)) {
 								System.out.println("Error receiving game state data for user: " + clientUsername);

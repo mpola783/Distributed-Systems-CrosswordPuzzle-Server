@@ -98,19 +98,28 @@ public class CrosswordClient {
 	 * @return
 	 */
 	static int game(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
-		String cmd, response, gameState;
+		String cmd, response, gameResponse, gameCounter, gameState;
 		while (true) {
-
-			gameState = fromServer.nextLine();
-			if (gameState.equals(LOG_WIN_CMD)) {
+			
+			gameResponse = fromServer.nextLine();
+			if (gameResponse.equals(LOG_WIN_CMD)) {
 				System.out.println(WIN_MESSAGE);
 				return MENU_STATE;
-			} else if (gameState.equals(LOG_LOSS_CMD)) {
+			} else if (gameResponse.equals(LOG_LOSS_CMD)) {
 				System.out.println(LOSS_MESSAGE);
 				return MENU_STATE;
 			}
+			
+			gameCounter = fromServer.nextLine();
+			gameState = fromServer.nextLine();
 
-			String gameDisplay = gameState.replace("+", "\n");
+			String[] gameDisplay = gameState.split("+");
+			
+			for(String row: gameDisplay) {
+				System.out.println(row);
+			}
+			
+			
 			System.out.println(gameDisplay);
 
 			response = fromServer.nextLine();
