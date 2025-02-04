@@ -31,6 +31,7 @@ public class CrosswordGameServer {
 	private static String[] word_guessed;
 	private static char[] letters_guessed;
 	private static int lives;
+	private static String userName;
 
 	public static void main(String[] args) throws IOException {
 		if (args.length != 1) {
@@ -207,6 +208,16 @@ public class CrosswordGameServer {
     	}
 	}
 
+	// Method to convert grid to a single string representation
+	public static String gridToString(char[][] grid) {
+	    StringBuilder result = new StringBuilder();
+    
+	    for (char[] row : grid) {
+	        result.append(new String(row)).append("+\n"); // Append '+' at the end of each row
+	    }
+	
+	    return result.toString();
+	}
 
 	//Prepares grid for user
 	public static char[][] maskGrid(char[][] grid) {
@@ -290,7 +301,12 @@ public class CrosswordGameServer {
         System.out.print("\n");
         printGrid(CrosswordGameServer.userGrid);
 
-        sendGrid(out, CrosswordGameServer.userGrid);
+        // Send the grid to the client
+		StringBuilder returnQuery = new StringBuilder("Success " + CrosswordGameServer.userName + "\n");
+		returnQuery.append(gridToString(CrosswordGameServer.userGrid));
+		returnQuery.append("*");
+
+		out.print(returnQuery.toString());
     }
 
 
@@ -412,12 +428,13 @@ public class CrosswordGameServer {
     						System.out.print("Valid Format: " + parts[0] + "\n");
 
 							parts[0] = parts[0].toUpperCase();
+							CrosswordGameServer.userName = parts[1];
 
 							switch (parts[0]) {
     							case "START":
 
 									if(parts[2].matches("\\d+") && parts[3].matches("\\d+")) {
-										out.print("Starting New Game\n\n");
+										System.out.print("Starting New Game\n\n");
 										newGame(out, Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
 									}
 
