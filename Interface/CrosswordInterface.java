@@ -154,8 +154,10 @@ public class CrosswordInterface {
 				System.out.println("Packet receicved from connected server for user: " + clientUsername);
 
 				socket.close();
-
-				return packet.toString();
+				
+				String received = new String(packet.getData(), 0, packet.getLength());
+				
+				return received;
 			} catch (NumberFormatException n) {
 				System.err.println("Invalid port number: " + port + ".");
 			} catch (Exception e) {
