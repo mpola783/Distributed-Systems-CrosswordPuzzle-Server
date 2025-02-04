@@ -480,7 +480,9 @@ public class CrosswordInterface {
 					socket.receive(packet);
 					System.out.println("Account Server response received.");
 
-					if (packet.toString().endsWith("1")) {
+					String received = new String(packet.getData(), 0, packet.getLength());
+					
+					if (received.endsWith("1")) {
 						valid = MENU_STATE;
 						clientUsername = username;
 						toUser.println(WELCOME_MESSAGE);
