@@ -641,7 +641,7 @@ public class CrosswordInterface {
 
 					if (received.endsWith("1")) {
 						valid = MENU_STATE;
-						clientUsername = username;
+						this.clientUsername = username;
 						toUser.println(WELCOME_MESSAGE);
 						System.out.println("WELCOME_MESSAGE sent to socket: " + clientSocket);
 					}
