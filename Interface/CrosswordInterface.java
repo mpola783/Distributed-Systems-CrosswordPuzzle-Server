@@ -213,7 +213,7 @@ public class CrosswordInterface {
 						fromUser.reset(); // could do this on client side instead, by sending a duplicate cmd
 						return GAME_STATE;
 					case HISTORY_CMD:
-						toUser.println(handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query + clientUsername));
+						toUser.println(handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query + " " + clientUsername));
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case LOOKUP_WORD_CMD:
@@ -367,7 +367,7 @@ public class CrosswordInterface {
 
 					switch (parsedQuery[0]) {
 					case END_GAME_CMD:
-						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + clientUsername);
+						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
 						try {
 							link.close();
 						} catch (IOException i) {
@@ -375,7 +375,7 @@ public class CrosswordInterface {
 						}
 						return MENU_STATE;
 					case RESTART_GAME_CMD:
-						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + clientUsername);
+						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
 
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
@@ -401,7 +401,7 @@ public class CrosswordInterface {
 
 						break;
 					case CHECK_SCORE_CMD:
-						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, HISTORY_CMD + clientUsername);
+						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, HISTORY_CMD + " " + clientUsername);
 						break;
 					case CHECK_WORD_CMD:
 						if (parsedQuery.length != 2) {
@@ -424,7 +424,7 @@ public class CrosswordInterface {
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case QUIT_CMD:
-						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD);
+						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
 						try {
 							link.close(); // Step 4.
 						} catch (IOException i) {
@@ -449,11 +449,10 @@ public class CrosswordInterface {
 							}
 
 							if (gameResponse.equals(LOG_WIN_CMD)) {
-
 								toUser.println(gameState);
 								System.out.println("Win Message sent to user: " + clientUsername);
 
-								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD + clientUsername);
+								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD + " " + clientUsername);
 								try {
 									link.close();
 								} catch (IOException i) {
@@ -464,7 +463,7 @@ public class CrosswordInterface {
 								toUser.println(gameState);
 								System.out.println("Loss Message sent to user: " + clientUsername);
 
-								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + clientUsername);
+								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
 								try {
 									link.close();
 								} catch (IOException i) {
