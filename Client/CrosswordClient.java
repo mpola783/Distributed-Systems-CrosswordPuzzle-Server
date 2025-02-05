@@ -141,7 +141,7 @@ public class CrosswordClient {
 			gameCounter = fromServer.nextLine();
 			gameState = fromServer.nextLine();
 
-			String[] gameDisplay = gameState.split("+");
+			String[] gameDisplay = gameState.split("[+]");
 
 			for (String row : gameDisplay) {
 				System.out.println(row);

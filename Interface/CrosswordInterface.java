@@ -135,28 +135,33 @@ public class CrosswordInterface {
 		 */
 		String handleUDP(String host, int port, String query) {
 			try {
-				// get a datagram socket
 				DatagramSocket socket = new DatagramSocket();
-
-				// send request
-				byte[] requestBuf = new byte[BUFFER_LIMIT];
-				requestBuf = query.getBytes();
-
 				InetAddress address = InetAddress.getByName(host);
-				DatagramPacket packet = new DatagramPacket(requestBuf, requestBuf.length, address, port);
-				socket.send(packet);
+				
+				byte[] requestBuf =  query.getBytes("UTF-8");
+				DatagramPacket sendPacket = new DatagramPacket(requestBuf, requestBuf.length, address, port);
+				
+				socket.send(sendPacket);
 				System.out.println("Packet sent to connected server for user: " + clientUsername);
+				
+				socket.setSoTimeout(2000);
 
 				// get response
 				byte[] responseBuf = new byte[BUFFER_LIMIT];
-				packet = new DatagramPacket(responseBuf, requestBuf.length);
-				socket.receive(packet);
+				DatagramPacket receivePacket = new DatagramPacket(responseBuf, responseBuf.length);
+				
+				socket.receive(receivePacket);
 				System.out.println("Packet receicved from connected server for user: " + clientUsername);
+				
+				System.out.println("Packet Info");
+				System.out.println("Data: " + receivePacket.getData().toString());
+				System.out.println("Length: " + receivePacket.getLength());
+				
+				String received = new String(receivePacket.getData(), 0, receivePacket.getLength());
+				System.out.println("Received: " + received);
 
 				socket.close();
-
-				String received = new String(packet.getData(), 0, packet.getLength());
-
+				
 				return received;
 			} catch (NumberFormatException n) {
 				System.err.println("Invalid port number: " + port + ".");
@@ -193,6 +198,8 @@ public class CrosswordInterface {
 					String query = fromUser.readLine();
 					String response = "";
 					System.out.println("Command received from user: " + clientUsername);
+					
+					String[] parsedResponse;
 
 					String[] parsedQuery = query.split(" ");
 					switch (parsedQuery[0]) {
@@ -215,7 +222,13 @@ public class CrosswordInterface {
 							System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 							break;
 						}
-						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						
+						parsedResponse = handleUDP(WORD_HOST, WORD_PORT, query).split(" ");
+						
+						response = parsedResponse[parsedResponse.length -1];
+						
+						System.out.println("Word Server sent response: " + response);
+						
 						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word found!");
 						} else {
@@ -228,7 +241,12 @@ public class CrosswordInterface {
 							toUser.println(INVALID_CMD_ERR);
 							break;
 						}
-						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						parsedResponse = handleUDP(WORD_HOST, WORD_PORT, query).split(" ");
+						
+						response = parsedResponse[parsedResponse.length -1];
+						
+						System.out.println("Word Server sent response: " + response);
+						
 						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word added!");
 						} else {
@@ -243,7 +261,12 @@ public class CrosswordInterface {
 							System.out.println("INVALID_CMD_ERR sent to user: " + clientUsername);
 							break;
 						}
-						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
+						parsedResponse = handleUDP(WORD_HOST, WORD_PORT, query).split(" ");
+						
+						response = parsedResponse[parsedResponse.length -1];
+						
+						System.out.println("Word Server sent response: " + response);
+						
 						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word removed!");
 						} else {
@@ -305,6 +328,9 @@ public class CrosswordInterface {
 				String[] parsedGameResponse = gameResponse.split(" ");
 
 				System.out.println("Game server responded to user: " + clientUsername);
+				
+				System.out.println("Total Response: " + gameResponse);
+				
 				System.out.println("Response: " + parsedGameResponse[0]);
 
 				if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
