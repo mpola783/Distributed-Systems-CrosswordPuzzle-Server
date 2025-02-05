@@ -30,7 +30,10 @@ public class CrosswordGameServer {
 	private static String[] game_words;
 	private static String[] word_guessed;
 	private static char[] letters_guessed;
+	private static int numLetterGuesses;
+	private static int numWordGuesses;
 	private static int lives;
+	private static String userName;
 
 	public static void main(String[] args) throws IOException {
 		if (args.length != 1) {
@@ -46,7 +49,7 @@ public class CrosswordGameServer {
 			server = new ServerSocket(port);
 			System.out.println("The Game Server is running...");
 			
-			
+
 			ExecutorService fixedThreadPool = Executors.newFixedThreadPool(20);
 			while (true) {
 				fixedThreadPool.execute(new CrosswordInterfaceHandler(server.accept()));
@@ -72,15 +75,7 @@ public class CrosswordGameServer {
         }
     }
 
-	public static String removeWhitespace(String input) {
-        if (input == null) {
-            return null;
-        }
-        // Replace all whitespace characters
-        return input.replaceAll("\\s+", " ");
-    }
-
-
+	//NEWGAME START
 	// UDP Communication with WordServer
 	private static String sendToWordServerUDP(String query) {
 	    String wordServerResponse = null;
@@ -124,10 +119,9 @@ public class CrosswordGameServer {
         // Shuffle the list to randomize the order
         Collections.shuffle(indices);
         
-        // Create an array to store the first n random indices
         int[] randomIndexes = new int[n];
         
-        // Copy the first n random indexes into the array
+        // Copy the first n random indexes into array
         for (int i = 0; i < n; i++) {
             randomIndexes[i] = indices.get(i);
         }
@@ -163,12 +157,12 @@ public class CrosswordGameServer {
 
 
 
-	// Function to store the grid
+	// Function to create the grid
     public static char[][] createGrid(String vert_word, GridDimensions grid_x, String[] horiz_words, int[] vert_cross_index, int[] horiz_cross_index) {
     	int grid_y = vert_word.length();
     	int grid_x_max = grid_x.maxLength;
 
-    	// Initialize the 2D array with '.' as default
+    	// Initialize with '.'
     	char[][] grid = new char[grid_y][grid_x_max + 1];  // Extra column for '+'
     	for (int y = 0; y < grid_y; y++) {
     	    for (int x = 0; x <= grid_x_max; x++) {
@@ -192,7 +186,6 @@ public class CrosswordGameServer {
 	}
 
 
-
 	//Output grid row by row
 	public static void printGrid(char[][] grid) {
     	for (char[] row : grid) {
@@ -207,8 +200,19 @@ public class CrosswordGameServer {
     	}
 	}
 
+	// Method to convert grid to a single string representation
+	public static String gridToString(char[][] grid) {
+	    StringBuilder result = new StringBuilder();
+    
+	    for (char[] row : grid) {
+	        result.append(new String(row)).append("+"); // Append '+' at the end of each row
+	    }
+	
+	    return result.toString();
+	}
 
-	//Prepares grid for user
+
+	//Prepares new grid for user
 	public static char[][] maskGrid(char[][] grid) {
     	int rows = grid.length;
     	int cols = grid[0].length;
@@ -244,57 +248,7 @@ public class CrosswordGameServer {
         return count;
     }
 
-	
-	// Main function to create a new game
-    public static void newGame(PrintStream out, int words, int faults) {
-
-        // Validate the number of words
-        if (!validateWordCount(words)) {
-            System.out.println("Words chosen is not within 2 - 10, invalid prompt");
-            return;
-        }
-
-        // Initialize global arrays
-        CrosswordGameServer.game_words = new String[words];
-        CrosswordGameServer.word_guessed = new String[words];
-        CrosswordGameServer.letters_guessed = new char[words];
-
-        // Fetch the vertical word from the word server
-        String vert_word = fetchVerticalWord();
-
-        // Select random indexes for vertical-horizontal crossing
-        int[] vert_cross_index = selectRandomIndexes(vert_word, words - 1);
-
-        // Fetch the horizontal words
-        String[] horiz_words = fetchHorizontalWords(vert_word, vert_cross_index, words - 1);
-
-        // Determine the horizontal cross indices
-        int[] horiz_cross_index = determineCrossovers(vert_word, vert_cross_index, horiz_words);
-
-        // Determine the grid dimensions
-        GridDimensions grid_x = getGridDimensions(horiz_words, horiz_cross_index);
-        int grid_y = vert_word.length();
-
-        // Adjust horizontal cross indices
-        adjustCrossovers(horiz_cross_index, grid_x.verticalX);
-
-        // Create and mask the grid
-        createUserGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
-
-        // Count the total number of letters
-        int num_letters = countLetters(CrosswordGameServer.userGrid);
-        CrosswordGameServer.lives = faults * num_letters;
-        System.out.println("Fault counter: " + CrosswordGameServer.lives + "\n");
-
-        printGrid(CrosswordGameServer.finishedGrid);
-        System.out.print("\n");
-        printGrid(CrosswordGameServer.userGrid);
-
-        sendGrid(out, CrosswordGameServer.userGrid);
-    }
-
-
-    // Function to validate the number of words
+	// Function to validate the number of words
     private static boolean validateWordCount(int words) {
         if(words <= 10 && (words != 0 && words != 1)) {
 			return true;
@@ -313,16 +267,12 @@ public class CrosswordGameServer {
         }
 
         String vert_word = parts_vert[1];
-        System.out.println("\nVert Word: " + vert_word + "\n");
+        System.out.println("\nVertical Word: " + vert_word + "\n");
         return vert_word;
     }
 
-    // Function to select random indexes for vertical-horizontal crossing
-    private static int[] selectRandomIndexes(String vert_word, int horiz_count) {
-        return getRandomIndexes(vert_word, horiz_count);
-    }
 
-    // Function to fetch the horizontal words
+    // Function to fetch the horizontal words from word server
     private static String[] fetchHorizontalWords(String vert_word, int[] vert_cross_index, int horiz_count) {
         String[] horiz_words = new String[horiz_count];
         for (int i = 0; i < horiz_count; i++) {
@@ -368,13 +318,206 @@ public class CrosswordGameServer {
         }
     }
 
-    // Function to create and mask the grid
-    private static void createUserGrid(String vert_word, GridDimensions grid_x, String[] horiz_words, int[] vert_cross_index, int[] horiz_cross_index) {
-        CrosswordGameServer.finishedGrid = createGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
+
+	//CREATE FUNCTIONS
+	// Prepares grid for user by masking all characters except those in letters_guessed or word_guessed
+    public static char[][] updateUserGrid(char[][] grid) {
+        int rows = grid.length;
+        int cols = grid[0].length;
+        char[][] maskedGrid = new char[rows][cols];
+
+        // Initialize masked grid with '-'
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                char cell = grid[y][x];
+
+                // Check if the cell is in letters_guessed or if it's '.'
+                if (cell == '.' || isGuessedLetter(cell)) {
+                    maskedGrid[y][x] = cell; // Keep revealed
+                } else {
+                    maskedGrid[y][x] = '-'; // Mask initially
+                }
+            }
+        }
+
+        return maskedGrid;
+    }
+
+    // Helper function to check if a letter is in letters_guessed
+    private static boolean isGuessedLetter(char letter) {
+        for (char guessed : CrosswordGameServer.letters_guessed) {
+            if (guessed == letter) {
+                return true; // Letter has been guessed
+            }
+        }
+        return false; // Letter not guessed yet
+    }
+
+    // Helper function to reveal words that exist in word_guessed
+    private static void revealWords(char[][] grid, char[][] maskedGrid) {
+        int rows = grid.length;
+        int cols = grid[0].length;
+
+        for (String word : CrosswordGameServer.word_guessed) {
+            // Check horizontally (row-wise)
+            for (int y = 0; y < rows; y++) {
+                String rowString = new String(grid[y]);
+                if (rowString.contains(word)) {
+                    revealWordInRow(maskedGrid, grid, y, word);
+                }
+            }
+
+            // Check vertically (column-wise)
+            for (int x = 0; x < cols; x++) {
+                StringBuilder colString = new StringBuilder();
+                for (int y = 0; y < rows; y++) {
+                    colString.append(grid[y][x]);
+                }
+                if (colString.toString().contains(word)) {
+                    revealWordInColumn(maskedGrid, grid, x, word);
+                }
+            }
+        }
+    }
+
+    // Reveals a word in a specific row
+    private static void revealWordInRow(char[][] maskedGrid, char[][] grid, int row, String word) {
+        int start = new String(grid[row]).indexOf(word); // Find word start index in row
+        if (start != -1) {
+            for (int i = 0; i < word.length(); i++) {
+                maskedGrid[row][start + i] = grid[row][start + i]; // Reveal each character
+            }
+        }
+    }
+
+    // Reveals a word in a specific column
+    private static void revealWordInColumn(char[][] maskedGrid, char[][] grid, int col, String word) {
+        int rows = grid.length;
+        StringBuilder colString = new StringBuilder();
+
+        // Build the column string
+        for (int y = 0; y < rows; y++) {
+            colString.append(grid[y][col]);
+        }
+
+        int start = colString.toString().indexOf(word); // Find word start index in column
+        if (start != -1) {
+            for (int i = 0; i < word.length(); i++) {
+                maskedGrid[start + i][col] = grid[start + i][col]; // Reveal each character
+            }
+        }
+    }
+
+	// Function to check if the grid is fully revealed (i.e., contains no '-' characters)
+    public static boolean isComplete(char[][] grid) {
+        for (int y = 0; y < grid.length; y++) {
+            for (int x = 0; x < grid[0].length; x++) {
+                if (grid[y][x] == '-') {
+                    return false; // Grid still has masked characters
+                }
+            }
+        }
+        return true; // No '-' found, grid is fully revealed
+    }
+	
+	/*
+		Main function to create a new game
+		Connects to word server and generates user game grid
+		Creates randomly selected crossword layout using game input from user
+
+		Returns a SUCCESS, life counter, and user game layout after completion
+
+	*/
+    public static void newGame(PrintStream out, int words, int faults) {
+
+        // Validate the number of words
+        if (!validateWordCount(words)) {
+            System.out.println("Words chosen is not within 2 - 10, invalid prompt");
+			out.println("FAIL");
+            return;
+        }
+
+        // Initialize global arrays
+        CrosswordGameServer.game_words = new String[words];
+        CrosswordGameServer.word_guessed = new String[words];
+        CrosswordGameServer.letters_guessed = new char[words];
+
+        // Fetch the vertical word from the word server
+        String vert_word = fetchVerticalWord();
+
+        // Select random indexes for vertical-horizontal crossing
+        int[] vert_cross_index = getRandomIndexes(vert_word, words - 1);
+
+        // Fetch the horizontal words
+        String[] horiz_words = fetchHorizontalWords(vert_word, vert_cross_index, words - 1);
+
+        // Determine the horizontal cross indices
+        int[] horiz_cross_index = determineCrossovers(vert_word, vert_cross_index, horiz_words);
+
+        // Determine the grid dimensions
+        GridDimensions grid_x = getGridDimensions(horiz_words, horiz_cross_index);
+        int grid_y = vert_word.length();
+
+        // Adjust horizontal cross indices
+        adjustCrossovers(horiz_cross_index, grid_x.verticalX);
+
+        // Create and mask the grid
+		CrosswordGameServer.finishedGrid = createGrid(vert_word, grid_x, horiz_words, vert_cross_index, horiz_cross_index);
         CrosswordGameServer.userGrid = maskGrid(CrosswordGameServer.finishedGrid);
+
+        // Determine Faults count
+        int num_letters = countLetters(CrosswordGameServer.userGrid);
+        CrosswordGameServer.lives = faults * num_letters;
+        System.out.println("Fault counter: " + CrosswordGameServer.lives + "\n");
+
+        printGrid(CrosswordGameServer.finishedGrid);
+        System.out.print("\n");
+        printGrid(CrosswordGameServer.userGrid);
+
+        // Send the grid to the client
+		StringBuilder returnQuery = new StringBuilder("SUCCESS " + CrosswordGameServer.lives + " " );
+		returnQuery.append(gridToString(CrosswordGameServer.userGrid));
+
+		out.println(returnQuery.toString());
     }
 
 
+	/*
+		Main function to check and update grid based on users guess
+		Updates global variables userGrid/finishedGrid and lettersGuessed/wordsGuessed to return a new game grid
+		Called in Main
+
+		Returns a WIN if grid is completed with new guess
+		Returns existing grid layout and life counter if not
+	*/
+    public static void checkGuess(PrintStream out, String guess) {
+		if (guess.length() == 1) {
+        	char guessedChar = guess.charAt(0); // Convert string to char
+			guessedChar = Character.toUpperCase(guessedChar); 
+
+			CrosswordGameServer.letters_guessed[CrosswordGameServer.numLetterGuesses] = guessedChar;
+			CrosswordGameServer.numLetterGuesses++;
+		}
+		else {
+			String guessedWord = guess.toUpperCase();
+			CrosswordGameServer.word_guessed[CrosswordGameServer.numWordGuesses] = guessedWord;
+			CrosswordGameServer.numWordGuesses++;
+		}
+
+		CrosswordGameServer.userGrid = updateUserGrid(CrosswordGameServer.finishedGrid);
+
+		if(isComplete(CrosswordGameServer.userGrid)) {
+			out.println("WIN");
+		}
+
+		else {
+			// Send the grid to the client
+			StringBuilder returnQuery = new StringBuilder("SUCCESS " + CrosswordGameServer.lives + " " );
+			returnQuery.append(gridToString(CrosswordGameServer.userGrid));
+
+			out.println(returnQuery.toString());
+		}
+	}
 
 	private static class CrosswordInterfaceHandler implements Runnable {
 		private Socket interfaceSocket;
@@ -385,65 +528,73 @@ public class CrosswordGameServer {
 
 		@Override
 		public void run() {
+			CrosswordGameServer.numLetterGuesses = 0;
+			CrosswordGameServer.numWordGuesses = 0;
+
 	    	System.out.println("Connected, in communication with interface");
 		    try {
     		    PrintStream out = new PrintStream(interfaceSocket.getOutputStream());
     	    	Scanner in = new Scanner(new InputStreamReader(interfaceSocket.getInputStream()));
 
    		     String query = "";
-			 //String commands[] = ["NEWGAME", "CHECK", "SCORE"];
+			 //String commands[] = ["NEWGAME", "CHECK"];
 
     		    while (!query.equals("Quit")) {
         		    // Check if the interface has sent a message
             		if (in.hasNextLine()) { // Wait until input is available
                 		query = in.nextLine().trim();
 
-						//query = removeWhitespace(query);
-
                 		System.out.println("\nReceived the following message from Interface:" + query + "\n");
-	    	            /* Check Query for Operation arguments 
-							name/number/number
-						*/
 
 						String[] parts = query.split(" ");
 
-    	    	        if (parts.length == 4 || parts.length == 2) {
-							
-    						System.out.print("Valid Format: " + parts[0] + "\n");
+						parts[0] = parts[0].toUpperCase();
+						CrosswordGameServer.userName = parts[1];
 
-							parts[0] = parts[0].toUpperCase();
-
-							switch (parts[0]) {
-    							case "START":
-
-									if(parts[2].matches("\\d+") && parts[3].matches("\\d+")) {
-										out.print("Starting New Game\n\n");
-										newGame(out, Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+						switch (parts[0]) {
+    						case "START":
+								int words = 3;
+								int faults = 3;
+									
+								if (parts.length == 3 || parts.length == 1) {
+									if(parts.length == 3) {
+										words = Integer.parseInt(parts[1]);
+										faults = Integer.parseInt(parts[2]);
 									}
 
+									if(parts[1].matches("\\d+") && parts[2].matches("\\d+")) {
+										System.out.print("Starting New Game\n\n");
+										newGame(out, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
+									}
 									else {
-										out.print("Must enter numeric values for game variables\n");
+										out.println("FAIL");
 									}
-    							    break;
+								}
+								else {
+									out.println("FAIL");
+								}
+    						    break;
 
-    							case "CHECK":
-    							    out.print("Checking User Guess\n");
-    							    break;
+    						case "CHECK":
+    						    System.out.print("Checking User Guess\n");
 
-    							case "SCORE":
-    							    out.print("Checking Score");
-    						    	break;
+								if(CrosswordGameServer.userGrid != null) {
+									if(parts.length != 2) {
+										out.println("FAIL");
+									}
+									else{
+										checkGuess(out, parts[1]);
+									}
 
-    							default:
-    							    out.print("Error, invalid request");
-    							    break;
+								} else {
+									out.println("FAIL");
+								}
+    						    break;
+
+    						default:
+    						    out.print("Error, invalid request");
+    						    break;
 							}
-
-						} else {
-						    out.print("Invalid message format");
-						}
-
-                		out.println();
 
 		            } else {
     		            // Do nothing and keep waiting

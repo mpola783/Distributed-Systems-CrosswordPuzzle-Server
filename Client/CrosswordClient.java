@@ -1,60 +1,50 @@
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.Scanner;
 import java.lang.*;
 
+/**
+ * @author Tin Toone
+ * 
+ *         COMP 4635 - Distributed Systems - Winter 2025
+ * 
+ *         Code Reference: Course Material provided by Instructor Maryam Elahi
+ * 
+ *         Description: This program creates a client that establishes a TCP
+ *         connection to a interface server, allowing the user to play a
+ *         crossword game.
+ */
 public class CrosswordClient {
-	private static final String USAGE = "java CrosswordClient";
-
 	private static final String MENU_UI = "\n" + "START\n" + "HISTORY\n" + "LOOKUP\n" + "ADD\n" + "REMOVE\n";
 	private static final String GAME_UI = "";
 	private static final String WIN_MESSAGE = "";
 	private static final String LOSS_MESSAGE = "";
-	
-	
+
 	private static final String INVALID_CMD_ERR = "Invalid Command.";
 	private static final String AUTH_ERR = "Incorrect or Invalid Username or Password. Please Try Again.";
 	private static final String ATTEMPTS_ERR = "Max attempts reached.";
-	private static final String RESPONSE_ERR = "Error Getting Response.";
-	private static final String GENERIC_ERR = "An error has occured.";
 
 	private static final String LOGIN_USER_CMD = "LOGIN";
-	private static final String ADD_USER_CMD = "NEW";
 
 	private static final String START_GAME_CMD = "START";
-	private static final String HISTORY_CMD = "HISTORY";
-
-	private static final String LOOKUP_WORD_CMD = "LOOKUP";
-	private static final String ADD_WORD_CMD = "ADD";
-	private static final String REMOVE_WORD_CMD = "REMOVE";
 
 	private static final String END_GAME_CMD = "#";
-	private static final String RESTART_GAME_CMD = "!";
-	private static final String CHECK_SCORE_CMD = "$";
-	private static final String CHECK_WORD_CMD = "?";
-	private static final String WORD_REGEX = "[Aa-zA-Z]+";
-	
+
 	private static final String LOG_LOSS_CMD = "LOSS";
 	private static final String LOG_WIN_CMD = "WIN";
 
-	private static final String QUIT_CMD = "QUIT";
+	private static final String GAME_RESPONSE_ERR = "FAIL";
 
-	private static final int BUFFER_LIMIT = 1000;
+	private static final String QUIT_CMD = "QUIT";
 
 	private static final int INTERFACE_PORT = 69;
 
 	private static final String INTERFACE_HOST = "localhost";
 
 	private static final int DEFUALT_STATE = 1; // FOR TESTING
-	
+
 	private static final int QUIT_STATE = 0;
 	private static final int LOGIN_STATE = 1;
 	private static final int MENU_STATE = 2;
@@ -65,6 +55,26 @@ public class CrosswordClient {
 		instance.accessServer();
 	}
 
+	/**
+	 * 
+	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
+	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
+	 * @param toServer
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+	 */
 	static int menu(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 
 		while (true) {
@@ -76,36 +86,68 @@ public class CrosswordClient {
 			} while (cmd.isBlank());
 			toServer.println(cmd);
 
+			String[] parsedCMD = cmd.split(" ");
+
 			if (cmd.equals(QUIT_CMD)) { // quit check
 				return QUIT_STATE;
 			}
 
-			if (cmd.equals(START_GAME_CMD)) { // start check
+			response = fromServer.nextLine(); // server response
+
+			if (parsedCMD[0].equals(START_GAME_CMD) && response.equals("SUCCESS")) { // start check
 				return GAME_STATE;
 			}
 
-			while (true) {
-				response = fromServer.nextLine(); // server response
-				System.out.println(response);
-			}
+			System.out.println(response);
 		}
 	}
 
+	/**
+	 * 
+	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
+	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
+	 * @param toServer
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+	 */
 	static int game(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
-		String cmd, response, gameState;
+		String cmd, response, gameResponse, gameCounter, gameState;
 		while (true) {
+			gameResponse = fromServer.nextLine();
 
-			gameState = fromServer.nextLine();
-			if(gameState.equals(LOG_WIN_CMD)) {
+			if (gameResponse.equals(LOG_WIN_CMD)) {
 				System.out.println(WIN_MESSAGE);
 				return MENU_STATE;
-			} else if(gameState.equals(LOG_LOSS_CMD)) {
+			} else if (gameResponse.equals(LOG_LOSS_CMD)) {
 				System.out.println(LOSS_MESSAGE);
 				return MENU_STATE;
+			} else if (gameResponse.equals(GAME_RESPONSE_ERR)) {
+				System.out.println("Error receiving game state data.");
+				return MENU_STATE;
 			}
-			
-			String gameDisplay = gameState.replace("+", "\n");
-			System.out.println(gameDisplay);
+
+			gameCounter = fromServer.nextLine();
+			gameState = fromServer.nextLine();
+
+			String[] gameDisplay = gameState.split("[+]");
+
+			for (String row : gameDisplay) {
+				System.out.println(row);
+			}
+
+			System.out.println("Counter: " + gameCounter);
 
 			response = fromServer.nextLine();
 			System.out.println(response);
@@ -114,7 +156,7 @@ public class CrosswordClient {
 				cmd = userEntry.nextLine(); // send cmd to server
 			} while (cmd.isBlank());
 			toServer.println(cmd);
-			
+
 			String[] parsedQuery = cmd.split(" ");
 			if (parsedQuery[0].equals(END_GAME_CMD)) {
 				return MENU_STATE;
@@ -125,10 +167,29 @@ public class CrosswordClient {
 
 	}
 
+	/**
+	 * 
+	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
+	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
+	 * @param toServer
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
+	 */
 	static int login(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 		String message, response, cmd, auth;
-		
-		
+
 		System.out.println("Logging in...");
 		do {
 			response = fromServer.nextLine(); // login prompt
@@ -189,19 +250,19 @@ public class CrosswordClient {
 	}
 
 	private static void accessServer() {
-		Socket link = null; // Step 1.
+		Socket link = null;
 		System.out.println("Connecting to Server...");
 
 		try {
-			link = new Socket(INTERFACE_HOST, INTERFACE_PORT); // Step 1.
+			link = new Socket(INTERFACE_HOST, INTERFACE_PORT);
 			System.out.println("\nConnected.");
 
-			Scanner fromServer = new Scanner(link.getInputStream()); // Step 2.
-			PrintWriter toServer = new PrintWriter(link.getOutputStream(), true); // Step 2.
+			Scanner fromServer = new Scanner(link.getInputStream());
+			PrintWriter toServer = new PrintWriter(link.getOutputStream(), true);
 
 			Scanner userEntry = new Scanner(System.in);
 
-			int state =  DEFUALT_STATE;
+			int state = DEFUALT_STATE;
 
 			do {
 				switch (state) {
@@ -223,12 +284,12 @@ public class CrosswordClient {
 			userEntry.close();
 			fromServer.close();
 		} catch (IOException i) {
-			// handle exception
+			System.err.println(i.getMessage());
 		} finally {
 			try {
-				link.close(); // Step 4.
+				link.close();
 			} catch (IOException i) {
-				// handle exception
+				System.err.println(i.getMessage());
 			}
 		}
 	}
