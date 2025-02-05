@@ -34,7 +34,7 @@ public class CrosswordClient {
 
 	private static final String LOG_LOSS_CMD = "LOSS";
 	private static final String LOG_WIN_CMD = "WIN";
-	
+
 	private static final String GAME_RESPONSE_ERR = "FAIL";
 
 	private static final String QUIT_CMD = "QUIT";
@@ -50,10 +50,6 @@ public class CrosswordClient {
 	private static final int MENU_STATE = 2;
 	private static final int GAME_STATE = 3;
 
-	/**
-	 * 
-	 * @param args
-	 */
 	public static void main(String[] args) {
 		CrosswordClient instance = new CrosswordClient();
 		instance.accessServer();
@@ -62,9 +58,22 @@ public class CrosswordClient {
 	/**
 	 * 
 	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
 	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
 	 * @param toServer
-	 * @return
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
 	 */
 	static int menu(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 
@@ -76,19 +85,19 @@ public class CrosswordClient {
 				cmd = userEntry.nextLine(); // send cmd to server
 			} while (cmd.isBlank());
 			toServer.println(cmd);
-			
+
 			String[] parsedCMD = cmd.split(" ");
 
 			if (cmd.equals(QUIT_CMD)) { // quit check
 				return QUIT_STATE;
 			}
-			
+
 			response = fromServer.nextLine(); // server response
-			
+
 			if (parsedCMD[0].equals(START_GAME_CMD) && response.equals("SUCCESS")) { // start check
 				return GAME_STATE;
 			}
-			
+
 			System.out.println(response);
 		}
 	}
@@ -96,35 +105,48 @@ public class CrosswordClient {
 	/**
 	 * 
 	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
 	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
 	 * @param toServer
-	 * @return
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
 	 */
 	static int game(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 		String cmd, response, gameResponse, gameCounter, gameState;
 		while (true) {
 			gameResponse = fromServer.nextLine();
-			
+
 			if (gameResponse.equals(LOG_WIN_CMD)) {
 				System.out.println(WIN_MESSAGE);
 				return MENU_STATE;
 			} else if (gameResponse.equals(LOG_LOSS_CMD)) {
 				System.out.println(LOSS_MESSAGE);
 				return MENU_STATE;
-			} else if (gameResponse.equals(GAME_RESPONSE_ERR)){
+			} else if (gameResponse.equals(GAME_RESPONSE_ERR)) {
 				System.out.println("Error receiving game state data.");
 				return MENU_STATE;
 			}
-			
+
 			gameCounter = fromServer.nextLine();
 			gameState = fromServer.nextLine();
 
 			String[] gameDisplay = gameState.split("+");
-			
-			for(String row: gameDisplay) {
+
+			for (String row : gameDisplay) {
 				System.out.println(row);
 			}
-			
+
 			System.out.println("Counter: " + gameCounter);
 
 			response = fromServer.nextLine();
@@ -148,9 +170,22 @@ public class CrosswordClient {
 	/**
 	 * 
 	 * @param userEntry
+	 * 
+	 * This is an input stream, assumed to be from terminal input.
+	 * 
 	 * @param fromServer
+	 * 
+	 * 	This is an input stream, assumed to be receiving from an external server.
+	 * 
 	 * @param toServer
-	 * @return
+	 * 
+	 * This is an output stream, assumed to be sending to an external server.
+	 * 
+	 * @return state
+	 * 
+	 *         This is an integer, representing the client state.
+	 * 
+	 *         QUIT_STATE = 0 LOGIN_STATE = 1 MENU_STATE = 2 GAME_STATE = 3
 	 */
 	static int login(Scanner userEntry, Scanner fromServer, PrintWriter toServer) {
 		String message, response, cmd, auth;
@@ -214,9 +249,6 @@ public class CrosswordClient {
 		return MENU_STATE;
 	}
 
-	/**
-	 * 
-	 */
 	private static void accessServer() {
 		Socket link = null;
 		System.out.println("Connecting to Server...");

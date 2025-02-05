@@ -216,7 +216,7 @@ public class CrosswordInterface {
 							break;
 						}
 						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
-						if(Integer.parseInt(response) == 1) {
+						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word found!");
 						} else {
 							toUser.println("Word not found!");
@@ -229,12 +229,12 @@ public class CrosswordInterface {
 							break;
 						}
 						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
-						if(Integer.parseInt(response) == 1) {
+						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word added!");
 						} else {
 							toUser.println("Word not added!");
 						}
-						
+
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case REMOVE_WORD_CMD:
@@ -244,7 +244,7 @@ public class CrosswordInterface {
 							break;
 						}
 						response = handleUDP(WORD_HOST, WORD_PORT, query).split(" ")[2];
-						if(Integer.parseInt(response) == 1) {
+						if (Integer.parseInt(response) == 1) {
 							toUser.println("Word removed!");
 						} else {
 							toUser.println("Word not removed!");
@@ -300,18 +300,18 @@ public class CrosswordInterface {
 				toGame.println(gameSetting);
 				System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 				System.out.println("Settings: " + gameSetting);
-				
+
 				gameResponse = fromGame.readLine();
 				String[] parsedGameResponse = gameResponse.split(" ");
-				
+
 				System.out.println("Game server responded to user: " + clientUsername);
 				System.out.println("Response: " + parsedGameResponse[0]);
-				
+
 				if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 					System.out.println("Error receiving game state data for user: " + clientUsername);
 					return MENU_STATE;
 				}
-				
+
 				String gameCounter = parsedGameResponse[1];
 				System.out.println("Game Counter returned from Game Server for user: " + clientUsername);
 				System.out.println("Counter: " + gameCounter);
@@ -322,7 +322,8 @@ public class CrosswordInterface {
 
 				while (true) {
 					toUser.println(parsedGameResponse[0]);
-					System.out.println("Game response: \"" + parsedGameResponse[0] + "\" sent to user: " + clientUsername);
+					System.out.println(
+							"Game response: \"" + parsedGameResponse[0] + "\" sent to user: " + clientUsername);
 
 					toUser.println(gameCounter);
 					System.out.println("Game counter: \"" + gameCounter + "\" sent to user: " + clientUsername);
@@ -351,17 +352,17 @@ public class CrosswordInterface {
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						System.out.println("Settings: " + gameSetting);
-						
+
 						gameResponse = fromGame.readLine();
 						parsedGameResponse = gameResponse.split(" ");
 						System.out.println("Game server responded to user: " + clientUsername);
 						System.out.println("Response: " + parsedGameResponse[0]);
-						
+
 						if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 							System.out.println("Error receiving game state data for user: " + clientUsername);
 							return MENU_STATE;
 						}
-						
+
 						gameCounter = parsedGameResponse[1];
 						System.out.println("Game Counter returned from Game Server for user: " + clientUsername);
 						System.out.println("Counter: " + gameCounter);
@@ -385,18 +386,18 @@ public class CrosswordInterface {
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						System.out.println("Settings: " + gameSetting);
-						
+
 						gameResponse = fromGame.readLine();
 						parsedGameResponse = gameResponse.split(" ");
-						
+
 						System.out.println("Game server responded to user: " + clientUsername);
 						System.out.println("Response: " + parsedGameResponse[0]);
-						
+
 						if (parsedGameResponse[0].equals(GAME_RESPONSE_ERR)) {
 							System.out.println("Error receiving game state data for user: " + clientUsername);
 							return MENU_STATE;
 						}
-						
+
 						if (gameResponse.equals(LOG_WIN_CMD)) {
 
 							toUser.println(gameState);
