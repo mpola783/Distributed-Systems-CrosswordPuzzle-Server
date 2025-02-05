@@ -51,7 +51,8 @@ public class CrosswordInterface {
 	private static final String RESTART_GAME_CMD = "!";
 	private static final String CHECK_SCORE_CMD = "$";
 	private static final String CHECK_WORD_CMD = "?";
-
+	
+	private static final String RESET_CMD = "RESET";
 	private static final String LOG_LOSS_CMD = "LOSE";
 	private static final String LOG_WIN_CMD = "WIN";
 
@@ -372,6 +373,7 @@ public class CrosswordInterface {
 					switch (parsedQuery[0]) {
 					case END_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
+						toGame.println(RESET_CMD);
 						try {
 							link.close();
 						} catch (IOException i) {
