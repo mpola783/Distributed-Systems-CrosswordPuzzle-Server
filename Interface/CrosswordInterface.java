@@ -330,6 +330,7 @@ public class CrosswordInterface {
 				System.out.println("Settings: " + gameSetting);
 
 				gameResponse = fromGame.readLine();
+				
 				String[] parsedGameResponse = gameResponse.split(" ");
 
 				System.out.println("Game server responded to user: " + clientUsername);
@@ -373,8 +374,10 @@ public class CrosswordInterface {
 					switch (parsedQuery[0]) {
 					case END_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
-						toGame.println(RESET_CMD);
+						toGame.println(QUIT_CMD);
 						try {
+							fromGame.close();
+							toGame.close();
 							link.close();
 						} catch (IOException i) {
 							System.err.println(GAME_SERVER_ERROR);
@@ -382,7 +385,6 @@ public class CrosswordInterface {
 						return MENU_STATE;
 					case RESTART_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
-
 						toGame.println(gameSetting);
 						System.out.println("Sending user " + clientUsername + " settings to Game Server...");
 						System.out.println("Settings: " + gameSetting);
@@ -436,8 +438,11 @@ public class CrosswordInterface {
 						break;
 					case QUIT_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
+						toGame.println(QUIT_CMD);
 						try {
-							link.close(); // Step 4.
+							fromGame.close();
+							toGame.close();
+							link.close();
 						} catch (IOException i) {
 							System.err.println(GAME_SERVER_ERROR);
 						}
@@ -464,7 +469,10 @@ public class CrosswordInterface {
 								System.out.println("Win Message sent to user: " + clientUsername);
 
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD + " " + clientUsername);
+								toGame.println(QUIT_CMD);
 								try {
+									fromGame.close();
+									toGame.close();
 									link.close();
 								} catch (IOException i) {
 									System.err.println(GAME_SERVER_ERROR);
@@ -473,9 +481,11 @@ public class CrosswordInterface {
 							} else if (gameResponse.equals(LOG_LOSS_CMD)) {
 								toUser.println(gameResponse);
 								System.out.println("Loss Message sent to user: " + clientUsername);
-
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
+								toGame.println(QUIT_CMD);
 								try {
+									fromGame.close();
+									toGame.close();
 									link.close();
 								} catch (IOException i) {
 									System.err.println(GAME_SERVER_ERROR);
