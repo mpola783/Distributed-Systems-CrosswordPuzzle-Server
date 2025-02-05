@@ -382,7 +382,6 @@ public class CrosswordInterface {
 					switch (parsedQuery[0]) {
 					case END_GAME_CMD:
 						handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
-						toGame.println(QUIT_CMD);
 						try {
 							fromGame.close();
 							toGame.close();
@@ -487,7 +486,6 @@ public class CrosswordInterface {
 								System.out.println("Win Message sent to user: " + clientUsername);
 
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD + " " + clientUsername);
-								toGame.println(QUIT_CMD);
 								try {
 									fromGame.close();
 									toGame.close();
@@ -501,7 +499,6 @@ public class CrosswordInterface {
 								toUser.println(gameResponse);
 								System.out.println("Loss Message sent to user: " + clientUsername);
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
-								toGame.println(QUIT_CMD);
 								try {
 									fromGame.close();
 									toGame.close();
@@ -702,6 +699,7 @@ public class CrosswordInterface {
 						break;
 					case GAME_STATE:
 						state = game(fromUser, toUser);
+						break;
 					default:
 						state = QUIT_STATE;
 						break;
