@@ -52,7 +52,7 @@ public class AccountManager {
         }
         
         // Ensure request has at least a command and username
-        if (tokens.length < 2) return "ERROR Invalid Request";
+        if (tokens.length < 1) return "ERROR Invalid Request";
 
         String command = tokens[0].toUpperCase(); // Convert command to uppercase
         String name = tokens[1]; // Extract username
