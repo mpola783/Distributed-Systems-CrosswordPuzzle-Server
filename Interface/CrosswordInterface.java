@@ -458,7 +458,7 @@ public class CrosswordInterface {
 							}
 
 							if (gameResponse.equals(LOG_WIN_CMD)) {
-								toUser.println(gameState);
+								toUser.println(gameResponse);
 								System.out.println("Win Message sent to user: " + clientUsername);
 
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_WIN_CMD + " " + clientUsername);
@@ -469,7 +469,7 @@ public class CrosswordInterface {
 								}
 								return MENU_STATE;
 							} else if (gameResponse.equals(LOG_LOSS_CMD)) {
-								toUser.println(gameState);
+								toUser.println(gameResponse);
 								System.out.println("Loss Message sent to user: " + clientUsername);
 
 								handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, LOG_LOSS_CMD + " " + clientUsername);
