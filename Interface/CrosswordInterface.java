@@ -51,9 +51,8 @@ public class CrosswordInterface {
 	private static final String RESTART_GAME_CMD = "!";
 	private static final String CHECK_SCORE_CMD = "$";
 	private static final String CHECK_WORD_CMD = "?";
-	private static final String WORD_REGEX = "[Aa-zA-Z]+";
 
-	private static final String LOG_LOSS_CMD = "LOSS";
+	private static final String LOG_LOSS_CMD = "LOSE";
 	private static final String LOG_WIN_CMD = "WIN";
 
 	private static final String QUIT_CMD = "QUIT";
@@ -213,7 +212,12 @@ public class CrosswordInterface {
 						fromUser.reset(); // could do this on client side instead, by sending a duplicate cmd
 						return GAME_STATE;
 					case HISTORY_CMD:
-						toUser.println(handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query + " " + clientUsername));
+						parsedResponse = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query + " " + clientUsername).split(" ");
+						response = parsedResponse[parsedResponse.length - 2];
+						System.out.println("Word Server sent response: " + response);
+						
+						toUser.println("Current W/L: " + response);
+
 						System.out.println("Response sent to user: " + clientUsername);
 						break;
 					case LOOKUP_WORD_CMD:
@@ -402,6 +406,11 @@ public class CrosswordInterface {
 						break;
 					case CHECK_SCORE_CMD:
 						response = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, HISTORY_CMD + " " + clientUsername);
+						
+						parsedResponse = handleUDP(ACCOUNT_HOST, ACCOUNT_PORT, query + " " + clientUsername).split(" ");
+						response = "Current W/L: " + parsedResponse[parsedResponse.length - 2];
+						System.out.println("Word Server sent response: " + response);
+						
 						break;
 					case CHECK_WORD_CMD:
 						if (parsedQuery.length != 2) {
