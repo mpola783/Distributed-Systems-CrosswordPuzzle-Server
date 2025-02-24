@@ -1,133 +1,95 @@
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+import java.rmi.Naming;
 import java.io.*;
-import java.net.*;
 import java.util.*;
 
-public class AccountManager {
-    private static final int PORT = 6969; // Port for the UDP server
-    private static final String FILE_NAME = "accounts.txt"; // File storing account information
+// Remote Interface
+public interface AccountManager extends Remote {
+    String loginUser(String name, String password) throws RemoteException;
+    String createUser(String name, String password) throws RemoteException;
+    String getHistory(String name) throws RemoteException;
+    String updateScore(String name, boolean isWin, boolean isMultiplayer) throws RemoteException;
+}
 
-    public static void main(String[] args) {
-        try (DatagramSocket serverSocket = new DatagramSocket(PORT)) {
-            System.out.println("UDP Account Manager Service running on port " + PORT);
+// Implementation of AccountManager
+class AccountManagerImpl extends UnicastRemoteObject implements AccountManager {
+    private static final String FILE_NAME = "accounts.txt";
 
-            // Loop to handle incoming requests
-            while (true) {
-                byte[] inData = new byte[1024];
-                DatagramPacket inPacket = new DatagramPacket(inData, inData.length);
-                serverSocket.receive(inPacket); // Receive packet from client
-
-                // Create a new thread to process the request
-                Thread clientThread = new Thread(() -> serviceRequest(serverSocket, inPacket));
-                clientThread.start();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    protected AccountManagerImpl() throws RemoteException {
+        super();
     }
 
-    private static void serviceRequest(DatagramSocket serverSocket, DatagramPacket inPacket) {
-        try {
-            // Extract the request data from the received packet
-            String request = new String(inPacket.getData(), 0, inPacket.getLength()).trim();
-            System.out.println("Received from client: " + request);
-            
-            // Handle the request and prepare a response
-            String response = handleRequest(request);
-            byte[] sendData = response.getBytes();
-            
-            // Send the response back to the client
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, inPacket.getAddress(), inPacket.getPort());
-            serverSocket.send(sendPacket);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static String handleRequest(String request) {
-        // Tokenize the incoming request
-        String[] tokens = request.split(" ");
-        System.out.println("Token count: " + tokens.length);
-        for (int i = 0; i < tokens.length; i++) {
-            System.out.println("Token " + i + ": '" + tokens[i] + "'");
-        }
-        
-        // Ensure request has at least a command and username
-        if (tokens.length < 1) return "ERROR Invalid Request";
-
-        String command = tokens[0].toUpperCase(); // Convert command to uppercase
-        String name = tokens[1]; // Extract username
-        String password = tokens.length > 2 ? tokens[2] : ""; // Extract password if available
-
-        // Handle different commands
-        switch (command) {
-            case "LOGIN":
-                return loginUser(name, password);
-            case "NEW":
-                return createUser(name, password);
-            case "HISTORY":
-                return getHistory(name);
-            case "WIN":
-                return updateScore(name, true);
-            case "LOSE":
-                return updateScore(name, false);
-            default:
-                return "ERROR Unknown Command";
-        }   
-    }
-
-    private static String loginUser(String name, String password) {
+    @Override
+    public String loginUser(String name, String password) throws RemoteException {
+        System.out.println("Logging in user: " + name);
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] data = line.split(",");
-                if (data.length >= 4 && data[0].equals(name) && data[1].equals(password)) {
-                    return "LOGIN " + name + " 1"; // Login successful
+                if (data.length >= 6 && data[0].equals(name) && data[1].equals(password)) {
+                    System.out.println("Login successful for user: " + name);
+                    return "LOGIN SUCCESS";
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("File I/O error while logging in user: " + name);
+            throw new RemoteException("File I/O error", e);
         }
-        return "LOGIN " + name + " 0"; // Login failed
+        System.out.println("Login failed for user: " + name);
+        throw new RemoteException("Invalid login credentials");
     }
 
-    private static String createUser(String name, String password) {
+    @Override
+    public String createUser(String name, String password) throws RemoteException {
+        System.out.println("Creating user: " + name);
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.startsWith(name + ",")) {
-                    return "NEW " + name + " 0"; // User already exists
+                    System.out.println("User already exists: " + name);
+                    throw new RemoteException("User already exists");
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("File I/O error while creating user: " + name);
+            throw new RemoteException("File I/O error", e);
         }
-
-        // Create new user entry
+        
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
-            bw.write(name + "," + password + ",0,0\n"); // Initialize wins and losses to 0
+            bw.write(name + "," + password + ",0,0,0,0\n");
+            System.out.println("User created successfully: " + name);
         } catch (IOException e) {
-            e.printStackTrace();
-            return "NEW " + name + " 0"; // User creation failed
+            System.err.println("Failed to create user: " + name);
+            throw new RemoteException("Failed to create user", e);
         }
-        return "NEW " + name + " 1"; // User created successfully
+        return "User created successfully";
     }
 
-    private static String getHistory(String name) {
+    @Override
+    public String getHistory(String name) throws RemoteException {
+        System.out.println("Fetching history for user: " + name);
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] data = line.split(",");
-                if (data.length >= 4 && data[0].equals(name)) {
-                    return "HISTORY " + name + " " + data[2] + "/" + data[3] + " 1"; // Return user's win/loss record
+                if (data.length >= 6 && data[0].equals(name)) {
+                    System.out.println("History found for user: " + name);
+                    return "History: Multiplayer - " + data[2] + " wins, " + data[3] + " losses | Singleplayer - " + data[4] + " wins, " + data[5] + " losses";
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("File I/O error while fetching history for user: " + name);
+            throw new RemoteException("File I/O error", e);
         }
-        return "HISTORY " + name + " */* 0"; // No history found
+        System.out.println("No history found for user: " + name);
+        throw new RemoteException("User not found");
     }
 
-    private static String updateScore(String name, boolean isWin) {
+    @Override
+    public String updateScore(String name, boolean isWin, boolean isMultiplayer) throws RemoteException {
+        System.out.println("Updating score for user: " + name + " | Win: " + isWin + " | Multiplayer: " + isMultiplayer);
         List<String> lines = new ArrayList<>();
         boolean updated = false;
 
@@ -135,32 +97,55 @@ public class AccountManager {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] data = line.split(",");
-                if (data.length >= 4 && data[0].equals(name)) {
-                    int wins = Integer.parseInt(data[2]);
-                    int losses = Integer.parseInt(data[3]);
-                    if (isWin) wins++;
-                    else losses++;
-                    lines.add(name + "," + data[1] + "," + wins + "," + losses);
+                if (data.length >= 6 && data[0].equals(name)) {
+                    int mpWins = Integer.parseInt(data[2]);
+                    int mpLosses = Integer.parseInt(data[3]);
+                    int spWins = Integer.parseInt(data[4]);
+                    int spLosses = Integer.parseInt(data[5]);
+                    if (isMultiplayer) {
+                        if (isWin) mpWins++;
+                        else mpLosses++;
+                    } else {
+                        if (isWin) spWins++;
+                        else spLosses++;
+                    }
+                    lines.add(name + "," + data[1] + "," + mpWins + "," + mpLosses + "," + spWins + "," + spLosses);
                     updated = true;
+                    System.out.println("Updated score for user: " + name);
                 } else {
                     lines.add(line);
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
-            return (isWin ? "WIN " : "LOSE ") + name + " 0";
+            System.err.println("File I/O error while updating score for user: " + name);
+            throw new RemoteException("File I/O error", e);
         }
 
-        if (!updated) return (isWin ? "WIN " : "LOSE ") + name + " 0"; // User not found
+        if (!updated) {
+            System.out.println("User not found while updating score: " + name);
+            throw new RemoteException("User not found");
+        }
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME))) {
             for (String line : lines) {
                 bw.write(line + "\n");
             }
+            System.out.println("Score update successful for user: " + name);
         } catch (IOException e) {
-            e.printStackTrace();
-            return (isWin ? "WIN " : "LOSE ") + name + " 0"; // Failed to update file
+            System.err.println("Failed to update score for user: " + name);
+            throw new RemoteException("Failed to update score", e);
         }
-        return (isWin ? "WIN " : "LOSE ") + name + " 1"; // Score update successful
+        return "Score updated successfully";
+    }
+
+    public static void main(String[] args) {
+        try {
+            AccountManagerImpl server = new AccountManagerImpl();
+            Naming.rebind("AccountManager", server);
+            System.out.println("Account Manager is running...");
+        } catch (Exception e) {
+            System.err.println("Error starting Account Manager");
+            e.printStackTrace();
+        }
     }
 }
