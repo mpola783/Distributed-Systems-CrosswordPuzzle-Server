@@ -1,62 +1,85 @@
 import java.net.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.Scanner;
-import java.util.ArrayList;
-import java.util.Collections; // For shuffling the list
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-
+import java.util.*;
 import java.io.*;
 
-
 public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements CrissCrossPuzzleServer {
-    private static final int BUFFER_LIMIT = 1024;
-    private char[][] finishedGrid;
-    private char[][] userGrid;
 
-    private String[] game_words = new String[20];
-    private String[] word_guessed = new String[20];
-    private char[] letters_guessed = new char[40];
-    private int numLetterGuesses = 0;
-    private int numWordGuesses = 0;
-    private int lives;
-    private String userName;
-    private int num_words = 0;
-    private int faults = 0;
     
-    private static final long serialVersionUID = 1L;
-    
-    // Map to store game state using gameID as key, and each game holds a map of players
+    // Instead of storing game-specific data internally, we keep a map of game states.
     private Map<String, CrosswordGameState> gameStates;
-
 
     // Constructor
     public CrissCrossPuzzleServerImpl() throws RemoteException {
         super();
-        this.gameStates = new HashMap<>();
+        gameStates = new HashMap<>();
     }
 
-    // Grid Dimensions
+    // Inner helper class for grid dimensions.
     public class GridDimensions {
         int maxLength;
         int verticalX;
-
         public GridDimensions(int maxLength, int verticalX) {
             this.maxLength = maxLength;
             this.verticalX = verticalX;
         }
     }
+    
+///////////////////////////NEW LOGIC TEST////////////////////////////////////////////////////////////////////////
+    @Override
+    public List<GameLobbyInfo> listLobbies() throws RemoteException {
+        // Return a list of all pending lobbies.
+        return new ArrayList<>(pendingLobbies.values());
+    }
+    @Override
 
+    public String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
+        // Create a new game lobby.
+        String gameID = UUID.randomUUID().toString();
+        // Create a new game state but do not generate the puzzle yet.
+        CrosswordGameState gameState = new CrosswordGameState(gameID, numberOfPlayers, /*failedAttemptFactor*/ 3); //// idk about this TODO
+        gameState.addPlayer(name);
+        gameState.setExpectedPlayers(numberOfPlayers);
+        gameStates.put(gameID, gameState);
+        
+        // Create and store lobby info.
+        GameLobbyInfo lobby = new GameLobbyInfo(gameID, name, numberOfPlayers, gameLevel);
+        pendingLobbies.put(gameID, lobby);
+        
+        // Return the gameID so that the host can share it.
+        return gameID;
+    }
+
+    @Override
+    public String joinMultiplayer(String name, String gameID) throws RemoteException {
+        CrosswordGameState gameState = gameStates.get(gameID);
+        if (gameState == null) {
+            throw new RemoteException("Game with ID " + gameID + " not found.");
+        }
+        if (gameState.getPlayers().size() >= gameState.getExpectedPlayers()) {
+            throw new RemoteException("Game is already full.");
+        }
+        gameState.addPlayer(name);
+        
+        // Update lobby info.
+        GameLobbyInfo lobby = pendingLobbies.get(gameID);
+        if (lobby != null) {
+            lobby.incrementPlayers();
+        }
+        
+        // If the lobby is now full, remove it from pending and start the game.
+        if (gameState.getPlayers().size() == gameState.getExpectedPlayers()) {
+            pendingLobbies.remove(gameID);
+            // Generate the puzzle for the game.
+            generatePuzzle(gameState); /////////////create gamestate generator
+            // Optionally notify players that the game has started.
+        }
+        return gameID;
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // NEWGAME START
     /*

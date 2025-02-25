@@ -13,7 +13,7 @@ public interface CrissCrossPuzzleServer extends Remote{
                 failed_attempt_factor- the number of faults allowed (later multiplied by number of letters in game)
     
     */
-    public String startGame(String[] players, int number_of_words, int failed_attempt_factor, String gameID) throws RemoteException;
+
     
     /*
     public String guessLetter(String player,char letter) throws RemoteException;
@@ -35,4 +35,21 @@ public interface CrissCrossPuzzleServer extends Remote{
     
     
     public String checkWord() throws RemoteException; */
+
+
+
+    // Starts a single-player game for the given player.
+    // Returns a game ID that the client can use to interact with the game.
+    String startGame(String name, int number_of_words, int failed_attempt_factor,) throws RemoteException;
+
+    // Starts a multiplayer game lobby for the given player and number of players.
+    // Returns a game ID.
+    String startMultiplayer(String name, int numberOfPlayers) throws RemoteException;
+
+    // Joins an existing multiplayer game using its game ID.
+    // When the lobby becomes full, the game logic is started.
+    String joinMultiplayer(String name, String gameID) throws RemoteException;
+
+    // list current multiplayer lobbies that haven't started.
+    List<GameLobbyInfo> listLobbies() throws RemoteException;
 }

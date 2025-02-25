@@ -2,8 +2,17 @@ import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Scanner;
+
+//was used for diff polling paradigm, kept for ref
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
+
+//for polling updates for game chganges
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * ClientMicroservice acts as the client-side application that interacts with remote RMI services,
@@ -18,7 +27,7 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
 
     private AccountManager accountManager;
     private WordServer wordServer;
-    private CrosswordInterface crosswordInterface;
+    private CrosswordGameState CrosswordGameState;
 
     private Scanner scanner = new Scanner(System.in); // Scanner instance for user input
     private BlockingQueue<String> eventQueue = new LinkedBlockingQueue<>(); // Event queue for handling game events
@@ -31,45 +40,21 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
     }
 
     /**
-     * Constructor initializes the client and binds itself as a GameEventListener for notifications.
+     * Constructor initializes the client
      */
     protected ClientMicroservice() throws RemoteException {
         super(); //esentially UnicastRemoteObject.exportObject(this,0). UnicastRemoteObject does not have a 0 argument constructer so super must be called to accept rmi game updates
         try {
             accountManager = (AccountManager) Naming.lookup("rmi://localhost/AccountManager");
             wordServer = (WordServer) Naming.lookup("rmi://localhost/WordServer");
-            crosswordInterface = (CrosswordInterface) Naming.lookup("rmi://localhost/CrosswordInterface");
+            CrosswordGameState = (CrosswordGameState) Naming.lookup("rmi://localhost/CrosswordGameState");
         } catch (Exception e) {
             System.err.println("Error connecting to RMI services: " + e.getMessage());
             e.printStackTrace();
         }
 
-        // Start background thread for event handling
-        new Thread(() -> {
-            while (true) {
-                processGameEvents();
-            }
-        }, "GameEventProcessor").start();
-
-        // Ensure scanner is closed when exiting
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            scanner.close();
-        }));
     }
 
-	/**
-     * Registers this client instance as an event listener for its specific username for accepting W/L events.
-     */
-    private void registerEventListener() {
-        if (name != null) {
-            try {
-                Naming.rebind("rmi://localhost/GameEventListener_" + name, this);
-                System.out.println("Registered as event listener: GameEventListener_" + name);
-            } catch (Exception e) {
-                System.err.println("Error binding event listener: " + e.getMessage());
-            }
-        }
-    }
 
     /**
      * Main client loop, continuously running and switching between different game states.
@@ -91,26 +76,6 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
             } catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
             }
-        }
-    }
-
-    /**
-     * Processes game events from the queue.
-     */
-    private void processGameEvents() {
-        try {
-            String event = eventQueue.take(); // Blocks until an event is available
-            System.out.println("Game event received: " + event);
-            if (event.equals("WIN")) {
-                System.out.println("Congratulations, " + name + "! You won the game!");
-            } else if (event.equals("LOSE")) {
-                System.out.println("Game over, " + name + ". Better luck next time!");
-            }
-            state = GameState.READY;
-            gameID = null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            System.err.println("Error processing game event: " + e.getMessage());
         }
     }
 
@@ -211,24 +176,55 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
 					System.out.println(wordServer.addWord(scanner.nextLine()));
 					break;
 				case 5:
-					gameID = crosswordInterface.startSingleplayer(name); ///////////////////////// TODO interface doesnt exist
+                    System.out.print("Enter number of words: ");
+                    int numWords = scanner.nextInt();
+                    System.out.print("Enter fail factor: ");
+                    int failFactor = scanner.nextInt();
+                    scanner.nextLine(); // consume newline
+                    
+                    gameID = CrissCrossPuzzleServer.startGame(name, numWords, failFactor);
 					if (gameID != null) {
 						state = GameState.INGAME;
 					}
 					break;
 				case 6:
-					gameID = crosswordInterface.startMultiplayer(name);/////////////////////////// TODO interface doesnt exist add # of players
+					gameID = CrissCrossPuzzleServer.startMultiplayer(name);/////////////////////////// TODO interface doesnt exist add # of players maybefixed
 					if (gameID != null) {
 						state = GameState.INGAME;
 					}
 					break;
-				case 7:
-					System.out.print("Enter game ID: ");
-					gameID = crosswordInterface.joinMultiplayer(name, scanner.nextLine());//////////////////// TODO interface doesnt exist
-					if (gameID != null) {
-						state = GameState.INGAME;
-					}
-					break;
+                    case 7:
+                    try {
+                        // Retrieve available lobbies from the remote server
+                        List<GameLobbyInfo> lobbies = CrissCrossPuzzleServer.listLobbies();
+                        
+                        if (lobbies.isEmpty()) {
+                            System.out.println("No available lobbies at the moment. Please try again later.");
+                        } else {
+                            System.out.println("Available Lobbies:");
+                            for (int i = 0; i < lobbies.size(); i++) {
+                                System.out.println((i + 1) + ": " + lobbies.get(i).toString());
+                            }
+                            System.out.print("Enter the number of the lobby you wish to join: ");
+                            int choice = scanner.nextInt();
+                            scanner.nextLine(); // consume the newline
+                            
+                            if (choice < 1 || choice > lobbies.size()) {
+                                System.out.println("Invalid selection. Please try again.");
+                            } else {
+                                // Get the selected lobby's game ID
+                                String selectedGameID = lobbies.get(choice - 1).getGameID();
+                                // Attempt to join the lobby using the game ID
+                                gameID = gameServer.joinMultiplayer(name, selectedGameID);
+                                if (gameID != null) {
+                                    state = GameState.INGAME;
+                                }
+                            }
+                        }
+                    } catch (RemoteException e) {
+                        System.err.println("Error listing or joining lobby: " + e.getMessage());
+                    }
+                    break;
 				case 8:
 					handleLogout();
 					break;
@@ -245,18 +241,48 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
      * TODO: Implement full functionality for INGAME state operations.
      */
     private void handleInGame() {
-        System.out.println("TODO: Implement handleInGame() logic");
-    }
-
-    /**
-     * Listens for game win/loss events and places them into the event queue to be processed.
-     */
-    @Override
-    public void onGameEvent(String username, String event) throws RemoteException {
-        if (username.equals(this.name)) { //a little redundant due to refactoring the rmi address to name but too superstitious to cut
-            eventQueue.add(event); // Add event to the queue for processing
+        private void handleInGame() {
+            System.out.println("You are now in-game.");
+            System.out.println("Type 'exit' to leave the game.");
+            
+            // Scheduled executor to poll the game state periodically.
+            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+            // AtomicReference to store the last known game state for comparison.
+            AtomicReference<CrosswordGameState> lastState = new AtomicReference<>();
+        
+            // Start polling immediately, then every 3 seconds.
+            scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    // Retrieve the current game state from the remote service.
+                    CrosswordGameState currentState = CrissCrossPuzzleServer.getGameState(gameID); //TODO FIX THIS
+                    // If it's the first poll or if the state has changed, display it.
+                    if (lastState.get() == null || !currentState.equals(lastState.get())) {
+                        currentState.display();
+                        lastState.set(currentState);
+                    }
+                } catch (RemoteException e) {
+                    System.err.println("Error polling game state: " + e.getMessage());
+                }
+            }, 0, 3, TimeUnit.SECONDS);
+        
+            // Main in-game loop for user commands (e.g., to exit the game)
+            boolean inGameLoop = true;
+            while (inGameLoop && state == GameState.INGAME) {
+                String input = scanner.nextLine().trim().toLowerCase();
+                if ("exit".equals(input)) {
+                    System.out.println("Exiting game...");
+                    inGameLoop = false;
+                    state = GameState.READY;
+                    gameID = null;
+                } else {
+                    System.out.println("Unknown command. Type 'exit' to leave the game.");
+                }
+            }
+            // Stop the polling once the game is exited.
+            scheduler.shutdownNow();
         }
     }
+
 
     /**
      * Main method to start the client microservice.

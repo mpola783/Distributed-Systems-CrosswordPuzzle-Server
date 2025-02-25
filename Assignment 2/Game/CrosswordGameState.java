@@ -1,115 +1,236 @@
-/*
-GAME STATE
-Communication with: INTERFACE SERVER and WORD SERVER
-
-COMMANDS: NEWGAME num_words num_faults, CHECK string_word, CHECK char_letter
-The game server operates based on commands recieved from the interface server to return a desired outcome
-
-*/
-import java.io.*;
-import java.net.*;
-import java.util.Scanner;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
+public class CrosswordGameState implements Serializable {
 
-public class CrosswordGameState {
     private String gameID;
-    private List<String> players; // List of players in this game
-	private int numWords;
+    private List<PlayerScore> players; // List of players (each with a name and score)
+    private String activePlayer;       // Currently active player's name
+    private int numWords;
     private int lives;
-	private int totalLives;
+    private int totalLives;
     private String[] gameWords;
     private char[][] finishedGrid;
     private char[][] playerGrid;
-	
+    
     public CrosswordGameState(String gameID, int numWords, int lives) {
         this.gameID = gameID;
-		this.players = new ArrayList<>();
+        this.players = new ArrayList<>();
         this.numWords = numWords;
         this.lives = lives;
-		this.totalLives = lives;
+        this.totalLives = lives;
         this.gameWords = new String[numWords];
     }
-
-
-	// Add player to the game
-    public void addPlayer(String player) {
-        players.add(player);
+    
+    // Nested class to represent a tuple of player name and score.
+    public static class PlayerScore implements Serializable {
+        private String playerName;
+        private int score;
+        
+        public PlayerScore(String playerName, int score) {
+            this.playerName = playerName;
+            this.score = score;
+        }
+        
+        public String getPlayerName() {
+            return playerName;
+        }
+        
+        public int getScore() {
+            return score;
+        }
+        
+        public void setScore(int score) {
+            this.score = score;
+        }
+        
+        @Override
+        public String toString() {
+            return playerName + " (Score: " + score + ")";
+        }
     }
-
-	// Remove player from the game
-    public void removeplayer(String player) {
-        players.remove(player);
+    
+    // Add a player with an initial score of 0.
+    public void addPlayer(String playerName) {
+        players.add(new PlayerScore(playerName, 0));
+        // If no active player is set, use the first added player.
+        if (activePlayer == null) {
+            activePlayer = playerName;
+        }
     }
-
-	// Getters and setters for game state variables
-
+    
+    // Remove a player from the game.
+    public void removePlayer(String playerName) {
+        players.removeIf(p -> p.getPlayerName().equals(playerName));
+        // If the removed player was active, move to the next available player.
+        if (playerName.equals(activePlayer)) {
+            nextActivePlayer();
+        }
+    }
+    
+    // Returns the number of players (lobby size).
+    public int getLobbySize() {
+        return players.size();
+    }
+    
+    // Cycle to the next active player; wraps around at the end.
+    public void nextActivePlayer() {
+        if (players.isEmpty()) {
+            activePlayer = null;
+            return;
+        }
+        if (activePlayer == null) {
+            activePlayer = players.get(0).getPlayerName();
+            return;
+        }
+        int index = -1;
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getPlayerName().equals(activePlayer)) {
+                index = i;
+                break;
+            }
+        }
+        if (index == -1) { // If not found, default to first player.
+            activePlayer = players.get(0).getPlayerName();
+        } else {
+            activePlayer = players.get((index + 1) % players.size()).getPlayerName();
+        }
+    }
+    
+    // Returns the current active player's name.
+    public String getActivePlayer() {
+        return activePlayer;
+    }
+    
+    // Getters and setters for game state variables.
+    
     public String getGameID() {
         return gameID;
     }
-
+    
     public void setGameID(String gameID) {
         this.gameID = gameID;
     }
-
+    
     public int getLives() {
         return lives;
     }
-
+    
     public void setLives(int lives) {
         this.lives = lives;
     }
-
-	public int getTotalLives() {
-        return lives;
+    
+    public int getTotalLives() {
+        return totalLives;
     }
-
-	public void setNumWords(int numWords) {
+    
+    public void setTotalLives(int totalLives) {
+        this.totalLives = totalLives;
+    }
+    
+    public void setNumWords(int numWords) {
         this.numWords = numWords;
     }
-
-	public int getNumWords() {
+    
+    public int getNumWords() {
         return numWords;
     }
-
-    public String[] getPlayers() {
+    
+    // Returns the list of players with their scores.
+    public List<PlayerScore> getPlayers() {
         return players;
     }
-
-    public void setPlayers(String[] players) {
+    
+    public void setPlayers(List<PlayerScore> players) {
         this.players = players;
     }
-
-
-	public void getGameWords(String[] gameWords) {
-    	return gameWords;
-	}
-
-	public void setGameWords(int position, String word) {
-    	this.gameWords[position] = word;
-	}
-
+    
+    // Getters and setters for game words.
+    public String[] getGameWords() {
+        return gameWords;
+    }
+    
+    public void setGameWord(int position, String word) {
+        this.gameWords[position] = word;
+    }
+    
     public char[][] getFinishedGrid() {
         return finishedGrid;
     }
-
+    
     public void setFinishedGrid(char[][] finishedGrid) {
         this.finishedGrid = finishedGrid;
     }
-
-    public char[][] getUserGrid() {
-        return userGrid;
+    
+    public char[][] getPlayerGrid() {
+        return playerGrid;
+    }
+    
+    public void setPlayerGrid(char[][] playerGrid) {
+        this.playerGrid = playerGrid;
+    }
+    
+    /**
+     * Prints out a grid along with game state details.
+     * @param gridType Specify "finished" to print the finishedGrid or "player" to print the playerGrid.
+     */
+    public void displayGrid(String gridType) {
+        char[][] gridToPrint;
+        if ("finished".equalsIgnoreCase(gridType)) {
+            gridToPrint = finishedGrid;
+        } else if ("player".equalsIgnoreCase(gridType)) {
+            gridToPrint = playerGrid;
+        } else {
+            System.out.println("Invalid grid type specified. Please use 'finished' or 'player'.");
+            return;
+        }
+        
+        if (gridToPrint == null) {
+            System.out.println("Grid not initialized.");
+            return;
+        }
+        
+        // Print the grid
+        System.out.println("----- " + gridType.toUpperCase() + " GRID -----");
+        for (int i = 0; i < gridToPrint.length; i++) {
+            for (int j = 0; j < gridToPrint[i].length; j++) {
+                System.out.print(gridToPrint[i][j] + " ");
+            }
+            System.out.println();
+        }
+        
+        // Print additional game state information
+        System.out.println("\n--- Game State Info ---");
+        System.out.println("Active Player: " + (activePlayer != null ? activePlayer : "None"));
+        System.out.println("Players and Scores:");
+        for (PlayerScore ps : players) {
+            System.out.println(" - " + ps.getPlayerName() + ": " + ps.getScore());
+        }
+        System.out.println("Total Lives Remaining: " + lives);
     }
 
-    public void setUserGrid(char[][] userGrid) {
-        this.userGrid = userGrid;
-    }
+	/**
+	 * Updates the active player's score by adding the specified amount.
+	 * @param scoreDelta The amount to add to the current score (can be negative to subtract).
+	 */
+	public void updateActivePlayerScore(int scoreDelta) {
+		if (activePlayer == null) {
+			System.out.println("No active player is set.");
+			return;
+		}
+		boolean updated = false;
+		for (PlayerScore ps : players) {
+			if (ps.getPlayerName().equals(activePlayer)) {
+				ps.setScore(ps.getScore() + scoreDelta);
+				updated = true;
+				break;
+			}
+		}
+		if (!updated) {
+			System.out.println("Active player not found in the players list.");
+		}
+	}	
 }
 
 /*
