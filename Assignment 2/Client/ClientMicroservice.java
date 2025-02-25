@@ -217,7 +217,7 @@ public class ClientMicroservice extends UnicastRemoteObject implements GameEvent
 					}
 					break;
 				case 6:
-					gameID = crosswordInterface.startMultiplayer(name);/////////////////////////// TODO interface doesnt exist
+					gameID = crosswordInterface.startMultiplayer(name);/////////////////////////// TODO interface doesnt exist add # of players
 					if (gameID != null) {
 						state = GameState.INGAME;
 					}
