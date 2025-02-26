@@ -134,7 +134,10 @@ class AccountManagerImpl extends UnicastRemoteObject implements AccountManager {
     public static void main(String[] args) {
         try {
             AccountManagerImpl server = new AccountManagerImpl();
-            Naming.rebind("AccountManager", server);
+            
+            // Bind the server object to the RMI registry with a unique name
+           Naming.rebind("AccountManager", server);
+
             System.out.println("Account Manager is running...");
         } catch (Exception e) {
             System.err.println("Error starting Account Manager");

@@ -12,3 +12,4 @@ public interface AccountManager extends Remote {
     String getHistory(String name) throws RemoteException;
     String updateScore(String name, boolean isWin, boolean isMultiplayer) throws RemoteException;
 }
+
