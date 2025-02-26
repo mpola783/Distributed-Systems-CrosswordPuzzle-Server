@@ -1,6 +1,6 @@
 import java.rmi.*;
 import java.rmi.RemoteException;
-
+import java.util.List;
 
 public interface CrissCrossPuzzleServer extends Remote{
 
@@ -34,17 +34,19 @@ public interface CrissCrossPuzzleServer extends Remote{
     public String removeWord() throws RemoteException;
     
     
-    public String checkWord() throws RemoteException; */
+    public String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException; */
 
+
+    public CrosswordGameState getGameState(String gameID);
 
 
     // Starts a single-player game for the given player.
     // Returns a game ID that the client can use to interact with the game.
-    String startGame(String name, int number_of_words, int failed_attempt_factor,) throws RemoteException;
+    public String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException;
 
     // Starts a multiplayer game lobby for the given player and number of players.
     // Returns a game ID.
-    String startMultiplayer(String name, int numberOfPlayers) throws RemoteException;
+    String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException;
 
     // Joins an existing multiplayer game using its game ID.
     // When the lobby becomes full, the game logic is started.

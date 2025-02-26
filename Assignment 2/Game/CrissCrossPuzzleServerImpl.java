@@ -4,6 +4,11 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.io.*;
+import java.util.List;
+import java.rmi.NotBoundException;
+import java.net.MalformedURLException;
+
+
 
 public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements CrissCrossPuzzleServer {
 
@@ -17,6 +22,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         gameStates = new HashMap<>();
     }
 
+
     // Inner helper class for grid dimensions.
     public class GridDimensions {
         int maxLength;
@@ -26,27 +32,37 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             this.verticalX = verticalX;
         }
     }
+
+    // Method to get the game state by gameID
+    @Override
+    public CrosswordGameState getGameState(String gameID) {
+        return gameStates.get(gameID);
+    }
+
     
 ///////////////////////////NEW LOGIC TEST////////////////////////////////////////////////////////////////////////
     @Override
     public List<GameLobbyInfo> listLobbies() throws RemoteException {
         // Return a list of all pending lobbies.
-        return new ArrayList<>(pendingLobbies.values());
+        //return new ArrayList<>(pendingLobbies.values());
+
+        return null;
     }
     @Override
 
     public String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
         // Create a new game lobby.
         String gameID = UUID.randomUUID().toString();
+
         // Create a new game state but do not generate the puzzle yet.
         CrosswordGameState gameState = new CrosswordGameState(gameID, numberOfPlayers, /*failedAttemptFactor*/ 3); //// idk about this TODO
         gameState.addPlayer(name);
-        gameState.setExpectedPlayers(numberOfPlayers);
+        //gameState.setExpectedPlayers(numberOfPlayers); //TODOOOO
         gameStates.put(gameID, gameState);
         
         // Create and store lobby info.
         GameLobbyInfo lobby = new GameLobbyInfo(gameID, name, numberOfPlayers, gameLevel);
-        pendingLobbies.put(gameID, lobby);
+        //pendingLobbies.put(gameID, lobby);
         
         // Return the gameID so that the host can share it.
         return gameID;
@@ -54,7 +70,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
     @Override
     public String joinMultiplayer(String name, String gameID) throws RemoteException {
-        CrosswordGameState gameState = gameStates.get(gameID);
+        /* CrosswordGameState gameState = gameStates.get(gameID);
         if (gameState == null) {
             throw new RemoteException("Game with ID " + gameID + " not found.");
         }
@@ -75,7 +91,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             // Generate the puzzle for the game.
             generatePuzzle(gameState); /////////////create gamestate generator
             // Optionally notify players that the game has started.
-        }
+        } */
         return gameID;
     }
 
@@ -91,7 +107,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     */
 
     @Override
-    public String startGame(String[] players, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException {
+    public String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException {
         // Validate number of words
         if (!validateWordCount(numberOfWords)) {
             System.out.println("Words chosen are not within 2 - 10, invalid prompt");
@@ -108,10 +124,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             //create a new game state
             gameState = new CrosswordGameState(gameID, numberOfWords, failedAttemptFactor);
 
-            // Add players to the new game state
-            for (String player : players) {
-                gameState.addPlayer(player);
-            }
+            gameState.addPlayer(player);  
 
             // Store game state
             gameStates.put(gameID, gameState);
@@ -126,9 +139,10 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
         // Select random indexes for vertical-horizontal crossing
         int[] vertCrossIndex = getRandomIndexes(vertWord, numberOfWords - 1);
+        String[] crossingValues = getValuesAtRandomIndexes(vertWord, vertCrossIndex);
 
         // Fetch the horizontal words
-        String[] horizWords = fetchHorizontalWords(vertWord, vertCrossIndex, numberOfWords - 1);
+        String[] horizWords = fetchHorizontalWords(vertWord, crossingValues, numberOfWords - 1);
         for (int i = 0; i < horizWords.length; i++) {
             gameState.setGameWords(i + 1, horizWords[i]);
         }
@@ -141,36 +155,36 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         int gridY = vertWord.length();
 
         // Adjust horizontal cross indices
-        adjustCrossovers(horizCrossIndex, gridX.verticalX);
+        //adjustCrossovers(horizCrossIndex, gridX.verticalX);
 
         // Create and mask the grid
         gameState.setFinishedGrid(createGrid(vertWord, gridX, horizWords, vertCrossIndex, horizCrossIndex));
-        gameState.setUserGrid(maskGrid(gameState.getFinishedGrid()));
+        gameState.setPlayerGrid(maskGrid(gameState.getFinishedGrid()));
 
         // Determine Faults count
-        int numLetters = countLetters(gameState.getUserGrid());
+        int numLetters = countLetters(gameState.getPlayerGrid());
         gameState.setLives(failedAttemptFactor * numLetters);
         System.out.println("Fault counter: " + gameState.getLives() + "\n");
 
         // Print grids for debugging
         printGrid(gameState.getFinishedGrid());
         System.out.println();
-        printGrid(gameState.getUserGrid());
+        printGrid(gameState.getPlayerGrid());
 
-        // Prepare the response
-        StringBuilder returnQuery = new StringBuilder("SUCCESS " + gameState.getLives() + " ");
-        returnQuery.append(gridToString(gameState.getUserGrid()));
+        gameStates.put(gameState.getGameID(), gameState);
 
-        return returnQuery.toString();
+        return gameState.getGameID();
     }
+    
 
     @Override
     public String restartGame(String gameID) throws RemoteException {
         // Retrieve the game state using gameID
         CrosswordGameState gameState = gameStates.get(gameID);
-
+        
         // Check if the game exists
         if (gameState != null) {
+            /*
             // Retrieve existing game details
             String[] players = gameState.getPlayers();
             int numWords = gameState.getNumWords();
@@ -183,7 +197,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             // Reset the game state (e.g., keeping players and words)
             // Clear the grid and user grid
             gameState.setFinishedGrid(null);
-            gameState.setUserGrid(null);
+            gameState.setPlayerGrid(null);
 
             // Convert List<String> to String[]
             String[] playersArray = player.toArray(new String[0]);
@@ -193,7 +207,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
             // Notify the players that the game has been reset
             System.out.println("Game has been reset successfully for game ID: " + gameID);
-
+            */
             // Return a success message
             return "Game with ID " + gameID + " has been reset successfully!";
         } else {
@@ -202,25 +216,70 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         }
     }
 
-    private String sendToWordServerRMI(String queryType) {
-    /*    String wordServerResponse = null;
 
+    /*
+        Main function to check and update grid based on users guess
+        Updates global variables userGrid/finishedGrid and lettersGuessed/wordsGuessed to return a new game grid
+        Called in Main
+
+        Returns a WIN if grid is completed with new guess
+        Returns existing grid layout and life counter if not
+    */
+    public String checkGuess(CrosswordGameState gameState, String guess) {
+        
+        gameState.setLives((gameState.getLives()) - 1);
+
+        if (guess.length() == 1) {
+            char guessedChar = guess.charAt(0); // Convert string to char
+            guessedChar = Character.toUpperCase(guessedChar); 
+
+            gameState.addLetterGuess(guessedChar);
+        }
+        else {
+            String guessedWord = guess.toUpperCase();
+            gameState.addWordGuess(guessedWord);
+        }
+
+        gameState.setPlayerGrid(updateUserGrid(gameState, gameState.getFinishedGrid()));
+        
+        if(isComplete(gameState.getPlayerGrid())) {
+            //WIN
+            //reset();
+        } else if (gameState.getLives() <= 0){
+            //LOSE
+            //reset();
+        }
+
+        gameStates.put(gameState.getGameID(), gameState);
+
+        return gameState.getGameID();
+    }
+
+
+    private String sendToWordServerRMI(int length, String command, String letter) throws RemoteException {
         try {
             // Look up the WordServer object from the RMI registry
             WordServer wordServer = (WordServer) Naming.lookup("rmi://localhost/WordServer");
 
-            // Call the remote fetchWord method
-            wordServerResponse = wordServer.fetchWord(queryType);
-        
-        } catch (Exception e) {
-            System.err.println("Error communicating with the WordServer via RMI: " + e.getMessage());
-        }
+            if (command == null) {
+                // Ensure length is not null before calling the method
+                if (length <= 0) {
+                    throw new IllegalArgumentException("Length parameter must be greater than 0.");
+                }
+                return wordServer.getRandomWord(length);
+            } else {
+                return wordServer.getRandomWord(command, letter);
+            }
 
-        return wordServerResponse;
-    */
-        return "Success word 0";
+        } catch (NotBoundException | MalformedURLException e) {
+            throw new RemoteException("Failed to connect to WordServer via RMI.", e);
+        } catch (Exception e) {
+            throw new RemoteException("An unexpected error occurred while communicating with WordServer.", e);
+        }
     }
 
+
+    
     // Chooses random indices of given word
     public int[] getRandomIndexes(String input, int n) {
         // Create a list to store all possible indexes
@@ -245,6 +304,23 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         Arrays.sort(randomIndexes);
 
         return randomIndexes;
+    }
+
+   public String[] getValuesAtRandomIndexes(String word, int[] randomIndexes) {
+        if (word == null || word.isEmpty() || randomIndexes == null || randomIndexes.length == 0) {
+            throw new IllegalArgumentException("Invalid input: word or indexes cannot be null or empty.");
+        }
+
+        String[] selectedStrings = new String[randomIndexes.length];
+
+        for (int i = 0; i < randomIndexes.length; i++) {
+            if (randomIndexes[i] < 0 || randomIndexes[i] >= word.length()) {
+                throw new IndexOutOfBoundsException("Index out of bounds for word: " + randomIndexes[i]);
+            }
+            selectedStrings[i] = String.valueOf(word.charAt(randomIndexes[i])); // Convert char to String
+        }
+
+        return selectedStrings;
     }
 
     // Determines the length/width of grid
@@ -371,52 +447,62 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
     // Function to fetch the vertical word from the word server
-    private String fetchVerticalWord(int words) {
-        String word_query = "FETCH l " + words;
-        String return_query = sendToWordServerRMI(word_query);
-        String[] parts_vert = return_query.split(" ");
+    private String fetchVerticalWord(int length) {
+        try {
+            String vert_word = sendToWordServerRMI(length, null, null);
 
-        if (parts_vert.length != 3 || !parts_vert[2].equals("1")) {
-            throw new RuntimeException("Error: Invalid response from word server for query: " + word_query);
+            if (vert_word == null) {
+                throw new RuntimeException("Error: Invalid response from word server for query");
+            }
+
+            return vert_word;
+        } catch (RemoteException e) {
+            // Handle the RemoteException
+            throw new RuntimeException("Error occurred while fetching the vertical word", e);
         }
-
-        String vert_word = parts_vert[1];
-        System.out.println("\nVertical Word: " + vert_word + "\n");
-        return vert_word;
     }
 
 
     // Function to fetch the horizontal words from word server
-    private String[] fetchHorizontalWords(String vert_word, int[] vert_cross_index, int horiz_count) {
-        String[] horiz_words = new String[horiz_count];
-        for (int i = 0; i < horiz_count; i++) {
-            char contains = vert_word.charAt(vert_cross_index[i]);
-            String word_query = "FETCH m " + contains;
-            String return_query = sendToWordServerRMI(word_query);
-            String[] parts = return_query.split(" ");
+    private String[] fetchHorizontalWords(String command, String[] letters, int wordCount) {
+        String[] horiz_words = new String[wordCount];
+        for (int i = 0; i < wordCount; i++) {
+            try {
+                String horiz_word = sendToWordServerRMI(0, command, letters[i]);
 
-            if (parts.length != 3 || !parts[2].equals("1")) {
-                throw new RuntimeException("Error: Invalid response from word server for query: " + word_query);
+                if (horiz_word == null) {
+                    throw new RuntimeException("Error: Invalid response from word server for query");
+               }
+
+                horiz_words[i] = horiz_word;
+            } catch (RemoteException e) {
+                // Handle the exception, e.g., log it or rethrow as a RuntimeException
+                throw new RuntimeException("Error occurred while fetching horizontal words", e);
             }
-
-            horiz_words[i] = parts[1];
-            System.out.println("\n" + horiz_words[i] + " ");
         }
+
         return horiz_words;
     }
 
     // Function to determine horizontal cross indices
     private int[] determineCrossovers(String vert_word, int[] vert_cross_index, String[] horiz_words) {
+        if (horiz_words.length < vert_cross_index.length) {
+            throw new IllegalArgumentException("Mismatch between vertical cross index count and horizontal words count.");
+        }
+
         int[] horiz_cross_index = new int[vert_cross_index.length];
+
         for (int i = 0; i < vert_cross_index.length; i++) {
             char targetChar = Character.toUpperCase(vert_word.charAt(vert_cross_index[i]));
             String horizWordUpper = horiz_words[i].toUpperCase();
             horiz_cross_index[i] = horizWordUpper.indexOf(targetChar);
 
             if (horiz_cross_index[i] < 0) {
-                throw new IllegalArgumentException("Character '" + vert_word.charAt(vert_cross_index[i]) + "' is not found in selected word");
+                throw new IllegalArgumentException("Character '" + vert_word.charAt(vert_cross_index[i]) + 
+                    "' is not found in horizontal word: " + horiz_words[i]);
             }
         }
+
         return horiz_cross_index;
     }
 
@@ -434,7 +520,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
     // CREATE FUNCTIONS
     // Prepares grid for user by masking all characters except those in letters_guessed or word_guessed
-    public char[][] updateUserGrid(char[][] grid) {
+    public char[][] updateUserGrid(CrosswordGameState gameState, char[][] grid) {
         int rows = grid.length;
         int cols = grid[0].length;
         char[][] maskedGrid = new char[rows][cols];
@@ -445,7 +531,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
                 char cell = grid[y][x];
 
                 // Check if the cell is in letters_guessed or if it's '.'
-                if (cell == '.' || isGuessedLetter(cell)) {
+                if (cell == '.' || isGuessedLetter(gameState, cell)) {
                     maskedGrid[y][x] = cell; // Keep revealed
                 } else {
                     maskedGrid[y][x] = '-'; // Mask initially
@@ -453,10 +539,11 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             }
         }
 
-        revealWords(grid, maskedGrid);
+        revealWords(gameState, grid, maskedGrid);
         return maskedGrid;
     }
 
+    /*
     public String[] getMatching(String[] array1, String[] array2) {
         HashSet<String> set = new HashSet<>();
         ArrayList<String> matchingWords = new ArrayList<>();
@@ -477,11 +564,15 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
         // Convert ArrayList to String[]
         return matchingWords.toArray(new String[0]);
-    }
+    } */
 
-    // Helper function to check if a letter is in letters_guessed
-    private boolean isGuessedLetter(char letter) {
-        for (char guessed : this.letters_guessed) {
+    // Helper function to check if a letter is in lettersGuessed
+    private boolean isGuessedLetter(CrosswordGameState gameState, char letter) {
+        if (gameState == null || gameState.getLettersGuessed() == null) {
+            throw new IllegalArgumentException("Invalid gameState or lettersGuessed is null.");
+        }
+
+        for (char guessed : gameState.getLettersGuessed()) {
             if (guessed == letter) {
                 return true; // Letter has been guessed
             }
@@ -490,11 +581,11 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
 	// Helper function to reveal words that exist in word_guessed
-    private void revealWords(char[][] grid, char[][] maskedGrid) {
+    private void revealWords(CrosswordGameState gameState, char[][] grid, char[][] maskedGrid) {
         int rows = grid.length;
         int cols = grid[0].length;
 
-        for (String word : this.word_guessed) {
+        for (String word : gameState.getWordsGuessed()) {
             if (word == null || word.isEmpty()) continue; // Skip empty/null words
 
             // Check horizontally (row)
@@ -552,141 +643,4 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
 	
-    /*
-        Main function to check and update grid based on users guess
-        Updates global variables userGrid/finishedGrid and lettersGuessed/wordsGuessed to return a new game grid
-        Called in Main
-
-        Returns a WIN if grid is completed with new guess
-        Returns existing grid layout and life counter if not
-    */
-    public void checkGuess(PrintStream out, String guess) {
-    
-        this.lives = this.lives - 1;
-
-        if (guess.length() == 1) {
-            char guessedChar = guess.charAt(0); // Convert string to char
-            guessedChar = Character.toUpperCase(guessedChar); 
-
-            this.letters_guessed[this.numLetterGuesses] = guessedChar;
-            this.numLetterGuesses++;
-        }
-        else {
-            String guessedWord = guess.toUpperCase();
-            this.word_guessed[this.numWordGuesses] = guessedWord;
-            this.numWordGuesses++;
-        }
-
-        this.userGrid = updateUserGrid(this.finishedGrid);
-
-        if(isComplete(this.userGrid)) {
-            out.println("WIN");
-            //reset();
-        } else if (this.lives <= 0){
-            out.println("LOSE");
-            //reset();
-        }
-
-        else {
-            // Send the grid to the client
-            StringBuilder returnQuery = new StringBuilder("SUCCESS " + this.lives + " " );
-            returnQuery.append(gridToString(this.userGrid));
-
-            out.println(returnQuery.toString());
-        }
-    }
-
-    /*
-    @Override
-    public void run() {
-        System.out.println("Connected, in communication with interface");
-        try {
-            PrintStream out = new PrintStream(interfaceSocket.getOutputStream());
-            Scanner in = new Scanner(new InputStreamReader(interfaceSocket.getInputStream()));
-
-            String query = "";
-
-            while (!query.equals("QUIT")) {
-                // Check if the interface has sent a message
-                if (in.hasNextLine()) { // Wait until input is available
-                    query = in.nextLine().trim();
-                    System.out.println("\nReceived the following message from Interface:" + query + "\n");
-
-                    String[] parts;
-                    try {
-                        parts = query.split(" ");
-                    } catch (Exception e) {
-                        parts = new String[0]; // Default to an empty array in case of an error
-                        System.err.println("Error splitting query: " + e.getMessage());
-                    }
-
-                    parts[0] = parts[0].toUpperCase();
-                    this.userName = parts[1];
-
-                    switch (parts[0]) {
-                        case "START":
-                            int words = 3;
-                            int faults = 3;
-
-                            if (parts.length == 3 || parts.length == 1) {
-                                if (parts.length == 3) {
-                                    words = Integer.parseInt(parts[1]);
-                                    faults = Integer.parseInt(parts[2]);
-                                }
-
-                                if (parts[1].matches("\\d+") && parts[2].matches("\\d+")) {
-                                    System.out.print("Starting New Game\n\n");
-                                    newGame(out, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
-                                } else {
-                                    out.println("FAIL");
-                                }
-                            } else {
-                                out.println("FAIL");
-                            }
-                            reset();
-                            break;
-
-                        case "CHECK":
-                            System.out.print("Checking User Guess " + parts[1] + "\n");
-
-                            if (this.userGrid != null) {
-                                if (parts.length != 2) {
-                                    out.println("FAIL");
-                                } else {
-                                    checkGuess(out, parts[1]);
-                                }
-                            } else {
-                                out.println("FAIL");
-                            }
-                            break;
-
-                        case "RESET":
-                            reset();
-                            break;
-
-                        default:
-                            out.print("Error, invalid request");
-                            break;
-                    }
-                } else {
-                    // Do nothing and keep waiting
-                    Thread.sleep(100); // Optional: add a small delay to avoid excessive CPU usage
-                }
-            }
-
-            reset();
-            in.close();
-        } catch (SocketException e) {
-            System.out.println("Error: " + e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                interfaceSocket.close();
-            } catch (IOException e) {
-                System.err.println("Error closing socket: " + e.getMessage());
-            }
-            System.out.println("Closed: " + interfaceSocket);
-        }
-    } */
 }
