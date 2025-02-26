@@ -642,5 +642,15 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         return true; // No '-' found, grid is fully revealed
     }
 
-	
+
+	public static void main(String[] args) {
+        try {
+            CrissCrossPuzzleServerImpl server = new CrissCrossPuzzleServerImpl();
+            Naming.rebind("CrissCrossPuzzleServer", server);
+            System.out.println("Game Server is running...");
+        } catch (Exception e) {
+            System.err.println("Error starting Game Server");
+            e.printStackTrace();
+        }
+    }
 }
