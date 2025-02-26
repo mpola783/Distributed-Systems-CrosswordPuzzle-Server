@@ -245,30 +245,30 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
      * Handles user interactions while in an active game.
      * TODO: Implement full functionality for INGAME state operations.
      */
-    private void handleInGame() {
+    private void handleInGame() throws RemoteException {
         System.out.println("You are now in-game.");
         System.out.println("Type 'exit' to leave the game.");
-        
+    
         // Scheduled executor to poll the game state periodically.
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         // AtomicReference to store the last known game state for comparison.
         AtomicReference<CrosswordGameState> lastState = new AtomicReference<>();
-        
+    
         // Start polling immediately, then every 3 seconds.
         scheduler.scheduleAtFixedRate(() -> {
-            //try {
+            try {
                 // Retrieve the current game state from the remote service.
-                CrosswordGameState currentState = server.getGameState(gameID); //TODO FIX THIS
+                CrosswordGameState currentState = server.getGameState(gameID); // This might throw RemoteException
                 // If it's the first poll or if the state has changed, display it.
-                if (lastState.get() == null || !currentState.equals(lastState.get())) {
-                    //currentState.display();
+                if (lastState.get() == null || !isStateEqual(currentState, lastState.get())) {
+                    // Display the current state (you can replace this with actual logic to display game state)
                     lastState.set(currentState);
                 }
-            //} catch (RemoteException e) {
-            //    System.err.println("Error polling game state: " + e.getMessage());
-            //}
+            } catch (RemoteException e) {
+                System.err.println("Error polling game state: " + e.getMessage());
+            }
         }, 0, 3, TimeUnit.SECONDS);
-        
+    
         // Main in-game loop for user commands (e.g., to exit the game)
         boolean inGameLoop = true;
         while (inGameLoop && state == GameState.INGAME) {
@@ -284,6 +284,21 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         }
         // Stop the polling once the game is exited.
         scheduler.shutdownNow();
+    }
+
+    // Helper method to compare game states
+    private boolean isStateEqual(CrosswordGameState currentState, CrosswordGameState lastState) {
+        // You need to manually compare the relevant fields of the game state objects
+        try {
+            return currentState.getGameID().equals(lastState.getGameID()) &&
+                   currentState.getActivePlayer().equals(lastState.getActivePlayer()) &&
+                   currentState.getPlayers().equals(lastState.getPlayers()) &&
+                   currentState.getLives() == lastState.getLives();
+            // Add other fields as needed for the comparison
+        } catch (RemoteException e) {
+            System.err.println("Error comparing game states: " + e.getMessage());
+        return false;
+            }
     }
 
 
