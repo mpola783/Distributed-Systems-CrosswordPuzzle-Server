@@ -35,7 +35,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
     // Method to get the game state by gameID
     @Override
-    public CrosswordGameState getGameState(String gameID) {
+    public CrosswordGameState getGameState(String gameID) throws RemoteException {
         return gameStates.get(gameID);
     }
 
@@ -48,14 +48,14 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
         return null;
     }
-    @Override
 
+    @Override
     public String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
         // Create a new game lobby.
         String gameID = UUID.randomUUID().toString();
 
         // Create a new game state but do not generate the puzzle yet.
-        CrosswordGameState gameState = new CrosswordGameState(gameID, numberOfPlayers, /*failedAttemptFactor*/ 3); //// idk about this TODO
+        CrosswordGameState gameState = new CrosswordGameStateImpl(gameID, numberOfPlayers, /*failedAttemptFactor*/ 3); //// idk about this TODO
         gameState.addPlayer(name);
         //gameState.setExpectedPlayers(numberOfPlayers); //TODOOOO
         gameStates.put(gameID, gameState);
@@ -122,7 +122,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             gameID = UUID.randomUUID().toString();
 
             //create a new game state
-            gameState = new CrosswordGameState(gameID, numberOfWords, failedAttemptFactor);
+            gameState = new CrosswordGameStateImpl(gameID, numberOfWords, failedAttemptFactor);
 
             gameState.addPlayer(player);  
 
@@ -225,7 +225,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         Returns a WIN if grid is completed with new guess
         Returns existing grid layout and life counter if not
     */
-    public String checkGuess(CrosswordGameState gameState, String guess) {
+    public String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException {
         
         gameState.setLives((gameState.getLives()) - 1);
 
@@ -383,24 +383,6 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     	}
 	}
 
-	//Output to stream row by row
-	public void sendGrid(PrintStream out, char[][] grid) {
-    	for (char[] row : grid) {
-    	    out.println(new String(row) + "+");  // Append '+' at the end of each row
-    	}
-	}
-
-	// Method to convert grid to a single string representation
-	public String gridToString(char[][] grid) {
-	    StringBuilder result = new StringBuilder();
-    
-	    for (char[] row : grid) {
-	        result.append(new String(row)).append("+"); // Append '+' at the end of each row
-	    }
-	
-	    return result.toString();
-	}
-
 
 	//Prepares new grid for user
 	public char[][] maskGrid(char[][] grid) {
@@ -520,7 +502,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
     // CREATE FUNCTIONS
     // Prepares grid for user by masking all characters except those in letters_guessed or word_guessed
-    public char[][] updateUserGrid(CrosswordGameState gameState, char[][] grid) {
+    public char[][] updateUserGrid(CrosswordGameState gameState, char[][] grid) throws RemoteException {
         int rows = grid.length;
         int cols = grid[0].length;
         char[][] maskedGrid = new char[rows][cols];
@@ -567,7 +549,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     } */
 
     // Helper function to check if a letter is in lettersGuessed
-    private boolean isGuessedLetter(CrosswordGameState gameState, char letter) {
+    private boolean isGuessedLetter(CrosswordGameState gameState, char letter) throws RemoteException{
         if (gameState == null || gameState.getLettersGuessed() == null) {
             throw new IllegalArgumentException("Invalid gameState or lettersGuessed is null.");
         }
@@ -581,7 +563,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
 	// Helper function to reveal words that exist in word_guessed
-    private void revealWords(CrosswordGameState gameState, char[][] grid, char[][] maskedGrid) {
+    private void revealWords(CrosswordGameState gameState, char[][] grid, char[][] maskedGrid) throws RemoteException {
         int rows = grid.length;
         int cols = grid[0].length;
 
@@ -646,7 +628,9 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	public static void main(String[] args) {
         try {
             CrissCrossPuzzleServerImpl server = new CrissCrossPuzzleServerImpl();
+            // Bind the server object to the RMI registry with a unique name
             Naming.rebind("CrissCrossPuzzleServer", server);
+
             System.out.println("Game Server is running...");
         } catch (Exception e) {
             System.err.println("Error starting Game Server");

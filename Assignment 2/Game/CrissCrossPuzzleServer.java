@@ -25,7 +25,7 @@ public interface CrissCrossPuzzleServer extends Remote{
     public String endGame(String player) throws RemoteException;
     
     */
-    public String restartGame(String player) throws RemoteException;
+    String restartGame(String player) throws RemoteException;
     /*
     
     public String addWord() throws RemoteException;
@@ -37,12 +37,12 @@ public interface CrissCrossPuzzleServer extends Remote{
     public String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException; */
 
 
-    public CrosswordGameState getGameState(String gameID);
+    CrosswordGameState getGameState(String gameID) throws RemoteException;
 
 
     // Starts a single-player game for the given player.
     // Returns a game ID that the client can use to interact with the game.
-    public String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException;
+    String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException;
 
     // Starts a multiplayer game lobby for the given player and number of players.
     // Returns a game ID.

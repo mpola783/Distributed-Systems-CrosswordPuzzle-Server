@@ -1,316 +1,51 @@
-/*
-GAME STATE
-Communication with: INTERFACE SERVER and WORD SERVER
-
-COMMANDS: NEWGAME num_words num_faults, CHECK string_word, CHECK char_letter
-The game server operates based on commands recieved from the interface server to return a desired outcome
-
-*/
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
 import java.util.List;
-import java.util.Arrays;
 
-public class CrosswordGameState implements Serializable {
+public interface CrosswordGameState extends Remote {
+    /** GAME IDENTIFICATION */
+    String getGameID() throws RemoteException;
+    void setGameID(String gameID) throws RemoteException;
 
-    private String gameID;
-    private List<PlayerScore> players; // List of players (each with a name and score)
-    private String activePlayer;       // Currently active player's name
-    private int numWords;
-    private int lives;
-    private int totalLives;
-    private String[] gameWords;
-	private char[] lettersGuessed;
-	private String[] wordsGuessed;
-    private char[][] finishedGrid;
-    private char[][] playerGrid;
-	private int lettersGuessedCount = 0; // Tracks number of letters added
-    private int wordsGuessedCount = 0;   // Tracks number of words added
-	private int maxlettersGuessed = 50;
-	private int maxwordsGuessed = 50;
-    
-    public CrosswordGameState(String gameID, int numWords, int lives) {
-        this.gameID = gameID;
-        this.players = new ArrayList<>();
-        this.numWords = numWords;
-        this.lives = lives;
-        this.totalLives = lives;
-        this.gameWords = new String[numWords];
-		this.lettersGuessed = new char[maxlettersGuessed];
-		this.wordsGuessed = new String[maxwordsGuessed];
-    }
-    
-    // Nested class to represent a tuple of player name and score.
-    public static class PlayerScore implements Serializable {
-        private String playerName;
-        private int score;
-        
-        public PlayerScore(String playerName, int score) {
-            this.playerName = playerName;
-            this.score = score;
-        }
-        
-        public String getPlayerName() {
-            return playerName;
-        }
-        
-        public int getScore() {
-            return score;
-        }
-        
-        public void setScore(int score) {
-            this.score = score;
-        }
-        
-        @Override
-        public String toString() {
-            return playerName + " (Score: " + score + ")";
-        }
-    }
-    
+    /** PLAYER MANAGEMENT */
+    List<CrosswordGameStateImpl.PlayerScore> getPlayers() throws RemoteException;
+    void addPlayer(String playerName) throws RemoteException;
+    void removePlayer(String playerName) throws RemoteException;
+    String getActivePlayer() throws RemoteException;
+    int getLobbySize() throws RemoteException;
+    void nextActivePlayer() throws RemoteException;
+    String[] getPlayerNames() throws RemoteException;
+    //void setPlayers(List<PlayerScore> players) throws RemoteException;
 
-	/**
-	 * 	PLAYER / Players GETTERS AND SETTERS
-	*/
-    // Add a player with an initial score of 0.
-    public void addPlayer(String playerName) {
-        players.add(new PlayerScore(playerName, 0));
-        // If no active player is set, use the first added player.
-        if (activePlayer == null) {
-            activePlayer = playerName;
-        }
-    }
-    
-    // Remove a player from the game.
-    public void removePlayer(String playerName) {
-        players.removeIf(p -> p.getPlayerName().equals(playerName));
-        // If the removed player was active, move to the next available player.
-        if (playerName.equals(activePlayer)) {
-            nextActivePlayer();
-        }
-    }
-    
-	// Returns the list of players with their scores.
-    public List<PlayerScore> getPlayers() {
-        return players;
-    }
+    /** GAME SETTINGS */
+    int getNumWords() throws RemoteException;
+    void setNumWords(int numWords) throws RemoteException;
+    String[] getGameWords() throws RemoteException;
+    void setGameWords(int position, String word) throws RemoteException;
 
-	public String[] getPlayerNames() {
-    	String[] playerNames = new String[players.size()];
-    	for (int i = 0; i < players.size(); i++) {
-    	    playerNames[i] = players.get(i).getPlayerName();
-    	}
-    	return playerNames;
-	}
-    
-    public void setPlayers(List<PlayerScore> players) {
-        this.players = players;
-    }
+    /** GAME LIVES */
+    int getLives() throws RemoteException;
+    void setLives(int lives) throws RemoteException;
+    int getTotalLives() throws RemoteException;
+    void setTotalLives(int totalLives) throws RemoteException;
 
+    /** GAME GRID */
+    char[][] getPlayerGrid() throws RemoteException;
+    void setPlayerGrid(char[][] playerGrid) throws RemoteException;
+    char[][] getFinishedGrid() throws RemoteException;
+    void setFinishedGrid(char[][] finishedGrid) throws RemoteException;
 
-	/**
-	 * 	LOBBY AND TURN BASED GETTERS AND SETTERS
-	*/
-	// Returns the current active player's name.
-    public String getActivePlayer() {
-        return activePlayer;
-    }
-	
-	public int getLobbySize() {
-        return players.size();
-    }
-    
-    // Cycle to the next active player; wraps around at the end.
-    public void nextActivePlayer() {
-        if (players.isEmpty()) {
-            activePlayer = null;
-            return;
-        }
-        if (activePlayer == null) {
-            activePlayer = players.get(0).getPlayerName();
-            return;
-        }
-        int index = -1;
-        for (int i = 0; i < players.size(); i++) {
-            if (players.get(i).getPlayerName().equals(activePlayer)) {
-                index = i;
-                break;
-            }
-        }
-        if (index == -1) { // If not found, default to first player.
-            activePlayer = players.get(0).getPlayerName();
-        } else {
-            activePlayer = players.get((index + 1) % players.size()).getPlayerName();
-        }
-    }
-    
+    /** GAME GUESSES (LETTERS & WORDS) */
+    void addLetterGuess(char letter) throws RemoteException;
+    void addWordGuess(String word) throws RemoteException;
+    char[] getLettersGuessed() throws RemoteException;
+    String[] getWordsGuessed() throws RemoteException;
+    int getLettersGuessedCount() throws RemoteException;
+    int getWordsGuessedCount() throws RemoteException;
 
-    /**
-	 * 	GAME ID
-	*/
-    public String getGameID() {
-        return gameID;
-    }
-    
-    public void setGameID(String gameID) {
-        this.gameID = gameID;
-    }
-    
+    /** DISPLAY GRID */
+    void displayGrid(String gridType) throws RemoteException;
 
-	/**
-	 * 	GAME LIVES
-	*/
-    public int getLives() {
-        return lives;
-    }
-    
-    public void setLives(int lives) {
-        this.lives = lives;
-    }
-    
-    public int getTotalLives() {
-        return totalLives;
-    }
-    
-    public void setTotalLives(int totalLives) {
-        this.totalLives = totalLives;
-    }
-    
-
-	/**
-	 * 	GAME SETTINGS SETTERS AND GETTERS
-	*/
-    public void setNumWords(int numWords) {
-        this.numWords = numWords;
-    }
-    
-    public int getNumWords() {
-        return numWords;
-    }
-    
-    public String[] getGameWords() {
-        return gameWords;
-    }
-    
-    public void setGameWords(int position, String word) {
-        this.gameWords[position] = word;
-    }
-    
-    public char[][] getFinishedGrid() {
-        return finishedGrid;
-    }
-    
-    public void setFinishedGrid(char[][] finishedGrid) {
-        this.finishedGrid = finishedGrid;
-    }
-    
-    public char[][] getPlayerGrid() {
-        return playerGrid;
-    }
-    
-    public void setPlayerGrid(char[][] playerGrid) {
-        this.playerGrid = playerGrid;
-    }
-
-	
-
-	/**
-	 * 	GAME GUESSES for WORDS and CHARS
-	*/
-	// Add a letter to lettersGuessed array
-    public void addLetterGuess(char letter) {
-    	if (lettersGuessedCount < lettersGuessed.length) {
-    	    lettersGuessed[lettersGuessedCount++] = letter;
-    	} else {
-    	    throw new IllegalStateException("Max letters guessed reached!");
-    	}
-	}
-
-	// Add a word to wordsGuessed array
-	public void addWordGuess(String word) {
-	    if (wordsGuessedCount < wordsGuessed.length) {
-    	    wordsGuessed[wordsGuessedCount++] = word;
-    	} else {
-    	    throw new IllegalStateException("Max words guessed reached!");
-    	}
-	}
-
-    public char[] getLettersGuessed() {
-        return Arrays.copyOf(lettersGuessed, lettersGuessedCount); // Return only valid entries
-    }
-
-    public String[] getWordsGuessed() {
-        return Arrays.copyOf(wordsGuessed, wordsGuessedCount); // Return only valid entries
-    }
-
-    public int getLettersGuessedCount() {
-        return lettersGuessedCount;
-    }
-
-    public int getWordsGuessedCount() {
-        return wordsGuessedCount;
-    }
-
-    
-    /**
-     * Prints out a grid along with game state details.
-     * @param gridType Specify "finished" to print the finishedGrid or "player" to print the playerGrid.
-     */
-    public void displayGrid(String gridType) {
-        char[][] gridToPrint;
-        if ("finished".equalsIgnoreCase(gridType)) {
-            gridToPrint = finishedGrid;
-        } else if ("player".equalsIgnoreCase(gridType)) {
-            gridToPrint = playerGrid;
-        } else {
-            System.out.println("Invalid grid type specified. Please use 'finished' or 'player'.");
-            return;
-        }
-        
-        if (gridToPrint == null) {
-            System.out.println("Grid not initialized.");
-            return;
-        }
-        
-        // Print the grid
-        System.out.println("----- " + gridType.toUpperCase() + " GRID -----");
-        for (int i = 0; i < gridToPrint.length; i++) {
-            for (int j = 0; j < gridToPrint[i].length; j++) {
-                System.out.print(gridToPrint[i][j] + " ");
-            }
-            System.out.println();
-        }
-        
-        // Print additional game state information
-        System.out.println("\n--- Game State Info ---");
-        System.out.println("Active Player: " + (activePlayer != null ? activePlayer : "None"));
-        System.out.println("Players and Scores:");
-        for (PlayerScore ps : players) {
-            System.out.println(" - " + ps.getPlayerName() + ": " + ps.getScore());
-        }
-        System.out.println("Total Lives Remaining: " + lives);
-    }
-
-	/**
-	 * Updates the active player's score by adding the specified amount.
-	 * @param scoreDelta The amount to add to the current score (can be negative to subtract).
-	 */
-	public void updateActivePlayerScore(int scoreDelta) {
-		if (activePlayer == null) {
-			System.out.println("No active player is set.");
-			return;
-		}
-		boolean updated = false;
-		for (PlayerScore ps : players) {
-			if (ps.getPlayerName().equals(activePlayer)) {
-				ps.setScore(ps.getScore() + scoreDelta);
-				updated = true;
-				break;
-			}
-		}
-		if (!updated) {
-			System.out.println("Active player not found in the players list.");
-		}
-	}	
+    /** SCORE MANAGEMENT */
+    void updateActivePlayerScore(int scoreDelta) throws RemoteException;
 }
-
