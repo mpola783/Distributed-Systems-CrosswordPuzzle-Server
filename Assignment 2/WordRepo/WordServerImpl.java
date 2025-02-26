@@ -154,6 +154,8 @@ public class WordServerImpl extends UnicastRemoteObject implements WordServer {
     public static void main(String[] args) {
         try {
             WordServerImpl server = new WordServerImpl();
+            
+            // Bind the server object to the RMI registry with a unique name
             Naming.rebind("WordServer", server);
             System.out.println("WordServer is running...");
         } catch (Exception e) {
