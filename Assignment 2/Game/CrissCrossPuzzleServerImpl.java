@@ -108,6 +108,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
     @Override
     public String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID) throws RemoteException {
+        
         // Validate number of words
         if (!validateWordCount(numberOfWords)) {
             System.out.println("Words chosen are not within 2 - 10, invalid prompt");
@@ -128,14 +129,16 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
             // Store game state
             gameStates.put(gameID, gameState);
+            
         } else {
             // Retrieve existing game state
             gameState = gameStates.get(gameID);
         }
-
+        
         // Fetch the vertical word from the word server
         String vertWord = fetchVerticalWord(numberOfWords);
         gameState.setGameWords(0, vertWord);
+        System.out.println("\nVertical Word: " + vertWord);
 
         // Select random indexes for vertical-horizontal crossing
         int[] vertCrossIndex = getRandomIndexes(vertWord, numberOfWords - 1);
@@ -155,7 +158,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         int gridY = vertWord.length();
 
         // Adjust horizontal cross indices
-        //adjustCrossovers(horizCrossIndex, gridX.verticalX);
+        adjustCrossovers(horizCrossIndex, gridX.verticalX);
 
         // Create and mask the grid
         gameState.setFinishedGrid(createGrid(vertWord, gridX, horizWords, vertCrossIndex, horizCrossIndex));
@@ -260,15 +263,19 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         try {
             // Look up the WordServer object from the RMI registry
             WordServer wordServer = (WordServer) Naming.lookup("rmi://localhost/WordServer");
+            String returnedWord;
 
             if (command == null) {
                 // Ensure length is not null before calling the method
                 if (length <= 0) {
                     throw new IllegalArgumentException("Length parameter must be greater than 0.");
                 }
-                return wordServer.getRandomWord(length);
+
+                returnedWord =  wordServer.getRandomVertWord(length);
+                return returnedWord;
             } else {
-                return wordServer.getRandomWord(command, letter);
+                returnedWord = wordServer.getRandomWord(command, letter);
+                return returnedWord;
             }
 
         } catch (NotBoundException | MalformedURLException e) {
@@ -446,10 +453,12 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
 
     // Function to fetch the horizontal words from word server
-    private String[] fetchHorizontalWords(String command, String[] letters, int wordCount) {
+    private String[] fetchHorizontalWords(String vertWord, String[] letters, int wordCount) {
         String[] horiz_words = new String[wordCount];
+
         for (int i = 0; i < wordCount; i++) {
             try {
+                String command = "m";
                 String horiz_word = sendToWordServerRMI(0, command, letters[i]);
 
                 if (horiz_word == null) {
@@ -457,6 +466,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
                }
 
                 horiz_words[i] = horiz_word;
+                System.out.print("\nHorizontal Word: " + horiz_words[i]);
             } catch (RemoteException e) {
                 // Handle the exception, e.g., log it or rethrow as a RuntimeException
                 throw new RuntimeException("Error occurred while fetching horizontal words", e);
