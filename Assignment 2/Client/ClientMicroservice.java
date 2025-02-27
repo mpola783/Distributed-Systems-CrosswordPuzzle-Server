@@ -274,47 +274,64 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         // Main in-game loop for user commands
         boolean inGameLoop = true;
         while (inGameLoop && state == GameState.INGAME) {
+            System.out.println("\nEnter letter or word for guess"); 
+            System.out.println("exit (Leave)");    
+            System.out.println("? (Lookup)");   
+            System.out.println("! (Restart)");
+
             String input = scanner.nextLine().trim().toLowerCase();
+
             switch (input) {
                 case "exit":
-                    System.out.println("Exiting game...");
-                    inGameLoop = false;
-                    state = GameState.READY;
-                    gameID = null;
+                    System.out.print("This will count as a loss. Are you sure you would like to quit? (y/n): ");
+                    input = scanner.nextLine().trim().toLowerCase();
+                    if ("y".equals(input)) {
+                        System.out.println("Exiting game...");
+                        inGameLoop = false;
+                        state = GameState.READY;
+                        gameID = null;
+                    }
                     break;
-                case "":
-                    System.out.print("\nInvalid Input\n");
-                    break;
+
                 case "!":
-                    System.out.print("\nStarting New Game\n");
+                    System.out.print("This will count as a loss. Are you sure you want to restart? (y/n): ");
+                    input = scanner.nextLine().trim().toLowerCase();
+                    if ("y".equals(input)) {
+                        gameID = server.restartGame(gameID);
+                    }
+                    printUserGame(gameID);
                     break;
-                case "#":
-                    System.out.print("\nShowing History\n");
-                    break;
+
                 case "?":
-                    System.out.print("\nLookup Word in word server dictionary\n");
+                    System.out.print("Enter word to look up: ");
+                    String word = scanner.nextLine().trim(); // Store input separately
+                    System.out.println(wordServer.checkWord(word));
                     break;
+
+                case "":
+                    System.out.println("\nInvalid Input\n"); // Use println for better formatting
+                    break;
+
                 default:
-                    System.out.print("\nChecking word\n");
+                    System.out.println("\nChecking word: " + input); // Use println instead of print
                     gameID = server.checkGuess(server.getGameState(gameID), input);
-                    
+
                     CrosswordGameState gameState = server.getGameState(gameID);
 
-                    if(gameState.getGameStatus().equals("WIN")) {
+                    if ("WIN".equals(gameState.getGameStatus())) {  // Use constant on the left to avoid NullPointerException
                         System.out.println("GAME WON\n");
                         inGameLoop = false;
                         state = GameState.READY;
                         gameID = null;
-                    }
-                    else if(gameState.getGameStatus().equals("LOSE")) {
+                        } else if ("LOSE".equals(gameState.getGameStatus())) {
                         System.out.println("GAME LOST\n");
                         inGameLoop = false;
-                        state = GameState.READY;
+                    state = GameState.READY;
                         gameID = null;
+                    } else {
+                        printUserGame(gameID); // Consider removing if unnecessary
                     }
-                    else {
-                        printUserGame(gameID);    //TAKE OUT IDEALLY
-                    }      
+                    break;
             }
         }
         // Stop the polling once the game is exited.
@@ -334,7 +351,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                               currentState.getLives() == lastState.getLives() &&
                               Arrays.deepEquals(currentState.getPlayerGrid(), lastState.getPlayerGrid()) &&
                               Arrays.equals(currentState.getLettersGuessed(), lastState.getLettersGuessed()) &&
-                                Arrays.equals(currentState.getWordsGuessed(), lastState.getWordsGuessed());
+                            Arrays.equals(currentState.getWordsGuessed(), lastState.getWordsGuessed());
 
 
             return isEqual;
