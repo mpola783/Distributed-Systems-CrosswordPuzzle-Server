@@ -187,9 +187,8 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         
         // Check if the game exists
         if (gameState != null) {
-            /*
             // Retrieve existing game details
-            String[] players = gameState.getPlayers();
+            String[] players = gameState.getPlayerNames();
             int numWords = gameState.getNumWords();
             int totalLives = gameState.getTotalLives(); // Total lives from the previous game
 
@@ -202,17 +201,15 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             gameState.setFinishedGrid(null);
             gameState.setPlayerGrid(null);
 
-            // Convert List<String> to String[]
-            String[] playersArray = player.toArray(new String[0]);
 
             // Call startGame to reset the game with the same configuration
-            startGame(playersArray, numWords, totalLives, gameID); // Reuse startGame logic
+            startGame(players[0], numWords, totalLives, gameID); // Reuse startGame logic
 
             // Notify the players that the game has been reset
             System.out.println("Game has been reset successfully for game ID: " + gameID);
-            */
+            
             // Return a success message
-            return "Game with ID " + gameID + " has been reset successfully!";
+            return gameID;
         } else {
             // If the game doesn't exist
             return "Game with ID " + gameID + " not found.";
