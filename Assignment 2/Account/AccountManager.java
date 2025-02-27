@@ -11,6 +11,7 @@ public interface AccountManager extends Remote {
     String createUser(String name, String password) throws RemoteException;
     String getHistory(String name) throws RemoteException;
     String updateScore(String name, boolean isWin, boolean isMultiplayer) throws RemoteException;
+    String getScore(String name) throws RemoteException;
 }
 
 // Implementation of AccountManager
@@ -136,6 +137,25 @@ class AccountManagerImpl extends UnicastRemoteObject implements AccountManager {
             throw new RemoteException("Failed to update score", e);
         }
         return "Score updated successfully";
+    }
+    
+    public String getScore(String name) throws RemoteException{
+        System.out.println("Fetching history for user: " + name);
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data.length >= 6 && data[0].equals(name)) {
+                    System.out.println("History found for user: " + name);
+                    return data[2] +","+ data[3];
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("File I/O error while getting score for user: " + name);
+            throw new RemoteException("File I/O error", e);
+        }
+        System.out.println("No history found for user: " + name);
+        throw new RemoteException("User not found");
     }
 
     public static void main(String[] args) {
