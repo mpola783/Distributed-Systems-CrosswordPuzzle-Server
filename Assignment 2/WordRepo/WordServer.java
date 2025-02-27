@@ -14,7 +14,7 @@ public interface WordServer extends Remote {
     // Overloaded getRandomWord methods:
     // 1. Filter words by minimum length.
     // adjusted for asg-specs
-    String getRandomWord(int length) throws RemoteException;
+    String getRandomVertWord(int length) throws RemoteException;
     
     // 2. Filter words using a command and letter (or substring).
     // m = contains

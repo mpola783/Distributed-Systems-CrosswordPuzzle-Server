@@ -20,7 +20,7 @@ public class WordServerImpl extends UnicastRemoteObject implements WordServer {
             if (words.contains(word)) {
                 return true;
             } else {
-                throw new RemoteException("Word not found");
+                return false;
             }
         } catch (IOException e) {
             throw new RemoteException("File I/O error", e);
@@ -36,7 +36,7 @@ public class WordServerImpl extends UnicastRemoteObject implements WordServer {
                 writeWords(words);
                 return true;
             } else {
-                throw new RemoteException("Word not found for removal");
+                return false;
             }
         } catch (IOException e) {
             throw new RemoteException("File I/O error", e);
@@ -62,7 +62,7 @@ public class WordServerImpl extends UnicastRemoteObject implements WordServer {
 
     // Overloaded method: fetch a random word with a minimum length requirement.
     @Override
-    public String getRandomWord(int length) throws RemoteException {
+    public String getRandomVertWord(int length) throws RemoteException {
         System.out.println("Fetching random word with minimum length: " + length);
         try {
             List<String> words = readWords();
