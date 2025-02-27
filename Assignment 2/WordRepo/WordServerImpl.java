@@ -53,7 +53,7 @@ public class WordServerImpl extends UnicastRemoteObject implements WordServer {
                 writeWords(words);
                 return true;
             } else {
-                throw new RemoteException("Word already exists");
+                return false;
             }
         } catch (IOException e) {
             throw new RemoteException("File I/O error", e);
