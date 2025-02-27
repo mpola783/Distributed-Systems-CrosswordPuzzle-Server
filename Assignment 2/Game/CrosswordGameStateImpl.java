@@ -34,6 +34,7 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
     private int wordsGuessedCount = 0;   // Tracks number of words added
 	private int maxlettersGuessed = 50;
 	private int maxwordsGuessed = 50;
+    private String gameStatus;
     
     public CrosswordGameStateImpl(String gameID, int numWords, int lives) throws RemoteException {
         super(); // Required for RMI
@@ -45,6 +46,7 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
         this.gameWords = new String[numWords];
 		this.lettersGuessed = new char[maxlettersGuessed];
 		this.wordsGuessed = new String[maxwordsGuessed];
+        this.gameStatus = "In-Progress";
     }
 
 
@@ -150,6 +152,16 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
         return players.size();
     }
     
+    @Override
+    public void setGameStatus(String status) {
+        this.gameStatus = status;
+    }
+
+    @Override
+    public String getGameStatus() {
+        return gameStatus;
+    }
+
 
     // Cycle to the next active player; wraps around at the end.
     @Override

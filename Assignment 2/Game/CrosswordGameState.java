@@ -22,6 +22,8 @@ public interface CrosswordGameState extends Remote {
     void setNumWords(int numWords) throws RemoteException;
     String[] getGameWords() throws RemoteException;
     void setGameWords(int position, String word) throws RemoteException;
+    void setGameStatus(String status) throws RemoteException;
+    String getGameStatus() throws RemoteException;
 
     /** GAME LIVES */
     int getLives() throws RemoteException;

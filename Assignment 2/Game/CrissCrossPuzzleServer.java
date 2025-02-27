@@ -33,8 +33,8 @@ public interface CrissCrossPuzzleServer extends Remote{
     
     public String removeWord() throws RemoteException;
     
-    
-    public String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException; */
+    */
+    String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException;
 
 
     CrosswordGameState getGameState(String gameID) throws RemoteException;

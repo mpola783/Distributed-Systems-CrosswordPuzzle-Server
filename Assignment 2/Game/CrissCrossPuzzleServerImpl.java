@@ -228,8 +228,10 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         Returns a WIN if grid is completed with new guess
         Returns existing grid layout and life counter if not
     */
+   @Override
     public String checkGuess(CrosswordGameState gameState, String guess) throws RemoteException {
-        
+        System.out.println("\nChecking guess: " + guess);
+
         gameState.setLives((gameState.getLives()) - 1);
 
         if (guess.length() == 1) {
@@ -246,11 +248,11 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         gameState.setPlayerGrid(updateUserGrid(gameState, gameState.getFinishedGrid()));
         
         if(isComplete(gameState.getPlayerGrid())) {
-            //WIN
-            //reset();
+            gameState.setGameStatus("WIN");
+            System.out.print("\nGAME WON\n");
         } else if (gameState.getLives() <= 0){
-            //LOSE
-            //reset();
+            gameState.setGameStatus("LOSE");
+            System.out.print("\nGAME LOST\n");
         }
 
         gameStates.put(gameState.getGameID(), gameState);
