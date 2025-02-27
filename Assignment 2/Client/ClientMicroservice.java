@@ -3,6 +3,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Scanner;
 import java.util.List;
+import java.util.Arrays;
 
 //was used for diff polling paradigm, kept for ref
 import java.util.concurrent.BlockingQueue;
@@ -187,7 +188,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
                     // Now call startGame on the instance
                     gameID = server.startGame(name, numWords, failFactor, null);
-                    //gameID = CrissCrossPuzzleServer.startGame(name, numWords, failFactor, null);
+
 					if (gameID != null) {
 						state = GameState.INGAME;
 					}
@@ -248,7 +249,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private void handleInGame() throws RemoteException {
         System.out.println("You are now in-game.");
         System.out.println("Type 'exit' to leave the game.");
-    
+        
         // Scheduled executor to poll the game state periodically.
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         // AtomicReference to store the last known game state for comparison.
@@ -259,27 +260,61 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
             try {
                 // Retrieve the current game state from the remote service.
                 CrosswordGameState currentState = server.getGameState(gameID); // This might throw RemoteException
-                // If it's the first poll or if the state has changed, display it.
+                
                 if (lastState.get() == null || !isStateEqual(currentState, lastState.get())) {
-                    // Display the current state (you can replace this with actual logic to display game state)
                     lastState.set(currentState);
+                    printUserGame(gameID);
                 }
+
             } catch (RemoteException e) {
                 System.err.println("Error polling game state: " + e.getMessage());
             }
         }, 0, 3, TimeUnit.SECONDS);
     
-        // Main in-game loop for user commands (e.g., to exit the game)
+        // Main in-game loop for user commands
         boolean inGameLoop = true;
         while (inGameLoop && state == GameState.INGAME) {
             String input = scanner.nextLine().trim().toLowerCase();
-            if ("exit".equals(input)) {
-                System.out.println("Exiting game...");
-                inGameLoop = false;
-                state = GameState.READY;
-                gameID = null;
-            } else {
-                System.out.println("Unknown command. Type 'exit' to leave the game.");
+            switch (input) {
+                case "exit":
+                    System.out.println("Exiting game...");
+                    inGameLoop = false;
+                    state = GameState.READY;
+                    gameID = null;
+                    break;
+                case "":
+                    System.out.print("\nInvalid Input\n");
+                    break;
+                case "!":
+                    System.out.print("\nStarting New Game\n");
+                    break;
+                case "#":
+                    System.out.print("\nShowing History\n");
+                    break;
+                case "?":
+                    System.out.print("\nLookup Word in word server dictionary\n");
+                    break;
+                default:
+                    System.out.print("\nChecking word\n");
+                    gameID = server.checkGuess(server.getGameState(gameID), input);
+                    
+                    CrosswordGameState gameState = server.getGameState(gameID);
+
+                    if(gameState.getGameStatus().equals("WIN")) {
+                        System.out.println("GAME WON\n");
+                        inGameLoop = false;
+                        state = GameState.READY;
+                        gameID = null;
+                    }
+                    else if(gameState.getGameStatus().equals("LOSE")) {
+                        System.out.println("GAME LOST\n");
+                        inGameLoop = false;
+                        state = GameState.READY;
+                        gameID = null;
+                    }
+                    else {
+                        printUserGame(gameID);    //TAKE OUT IDEALLY
+                    }      
             }
         }
         // Stop the polling once the game is exited.
@@ -288,20 +323,35 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
     // Helper method to compare game states
     private boolean isStateEqual(CrosswordGameState currentState, CrosswordGameState lastState) {
-        // You need to manually compare the relevant fields of the game state objects
+        // Null check to avoid NullPointerException
+        if (currentState == null || lastState == null) {
+            return false;
+        }
+
         try {
-            return currentState.getGameID().equals(lastState.getGameID()) &&
-                   currentState.getActivePlayer().equals(lastState.getActivePlayer()) &&
-                   currentState.getPlayers().equals(lastState.getPlayers()) &&
-                   currentState.getLives() == lastState.getLives();
-            // Add other fields as needed for the comparison
+            // Compare game states field by field
+            boolean isEqual = currentState.getGameID().equals(lastState.getGameID()) &&
+                              currentState.getLives() == lastState.getLives() &&
+                              Arrays.deepEquals(currentState.getPlayerGrid(), lastState.getPlayerGrid()) &&
+                              Arrays.equals(currentState.getLettersGuessed(), lastState.getLettersGuessed()) &&
+                                Arrays.equals(currentState.getWordsGuessed(), lastState.getWordsGuessed());
+
+
+            return isEqual;
         } catch (RemoteException e) {
             System.err.println("Error comparing game states: " + e.getMessage());
-        return false;
-            }
+            return false;
+        }
     }
 
-
+    public void printUserGame(String gameID) throws RemoteException {
+        CrosswordGameState gameServer = server.getGameState(gameID);
+        System.out.print("\n");
+        for (char[] row : gameServer.getPlayerGrid()) {
+    		    System.out.println(new String(row) + "+");  // Append '+' at the end of each row
+    		}
+        System.out.print("\nLives: " + gameServer.getLives() + "\n");
+    }
 
     /**
      * Main method to start the client microservice.
