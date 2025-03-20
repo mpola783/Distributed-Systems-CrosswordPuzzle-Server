@@ -124,6 +124,37 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
     }
 
     @Override
+    public int getPlayerScore(String playerName) {
+        for (PlayerScore player : players) {
+            if (player.getPlayerName().equals(playerName)) {
+                return player.getScore();
+            }
+        }
+        return -1; // Return -1 if player not found
+    }
+
+    @Override
+    public void setPlayerScore(String playerName, int points) {
+        for (PlayerScore player : players) {
+            if (player.getPlayerName().equals(playerName)) {
+                player.setScore(player.getScore() + points); // Adjust the score
+                return; // Exit after updating
+            }
+        }
+        System.out.println("Player not found: " + playerName);
+    }
+
+    @Override
+    public String displayScores() {
+        StringBuilder result = new StringBuilder();
+        for (PlayerScore player : players) {
+            String line = player.getPlayerName() + ": " + player.getScore();
+            result.append(line).append("\n"); // Store in StringBuilder
+        }
+        return result.toString();
+    }
+
+    @Override
 	public String[] getPlayerNames() {
     	String[] playerNames = new String[players.size()];
     	for (int i = 0; i < players.size(); i++) {

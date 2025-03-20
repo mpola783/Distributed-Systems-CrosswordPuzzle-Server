@@ -130,6 +130,28 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
     @Override
+    public char[][] getCurrentGrid(String gameID) throws RemoteException {
+        CrosswordGameState gameState = gameStates.get(gameID);
+        
+        return gameState.getPlayerGrid();
+    }
+
+
+    @Override
+    public void updatePlayerScore(String gameID, String playerName, int points) throws RemoteException{
+        CrosswordGameState gameState = gameStates.get(gameID);
+        
+        gameState.setPlayerScore(playerName, points);
+    }
+
+    @Override
+    public String displayAllScores(String gameID) throws RemoteException {
+        CrosswordGameState gameState = gameStates.get(gameID);
+        
+        return gameState.displayScores();
+    }
+
+    @Override
     public String joinMultiplayer(String name, String gameID) throws RemoteException {
         /* CrosswordGameState gameState = gameStates.get(gameID);
         if (gameState == null) {
@@ -328,7 +350,8 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         }
 
         gameStates.put(gameState.getGameID(), gameState);
-    
+
+
         return gameState.getGameID();
     }
 

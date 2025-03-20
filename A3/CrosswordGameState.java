@@ -20,6 +20,7 @@ public interface CrosswordGameState extends Remote {
     String getActivePlayer() throws RemoteException;
     int getLobbySize() throws RemoteException;
     void nextActivePlayer() throws RemoteException;
+    int getPlayerScore(String playerName) throws RemoteException;
     String[] getPlayerNames() throws RemoteException;
     void setMultiplayer(boolean multiplayer) throws RemoteException;
     boolean checkMultiplayer() throws RemoteException;
@@ -60,4 +61,6 @@ public interface CrosswordGameState extends Remote {
 
     /** SCORE MANAGEMENT */
     void updateActivePlayerScore(int scoreDelta) throws RemoteException;
+    void setPlayerScore(String playerName, int points) throws RemoteException;
+    String displayScores() throws RemoteException;
 }

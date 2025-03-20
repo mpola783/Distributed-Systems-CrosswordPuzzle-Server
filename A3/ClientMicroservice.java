@@ -37,6 +37,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private CrosswordGameState CrosswordGameState;
     private CrissCrossPuzzleServer server;
     private Scoreboard scoreboard;
+    private static char[][] currentGrid;
 
     private Scanner scanner = new Scanner(System.in); // Scanner instance for user input
     private BlockingQueue<String> eventQueue = new LinkedBlockingQueue<>(); // Event queue for handling game events
@@ -286,6 +287,9 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         System.out.println("\nSetting up Game... Please Wait\n");
         printUserGame(gameID);
         System.out.println("\nStarting Game\n");
+        String gameScores = server.displayAllScores(gameID);
+        System.out.print("\nCurrent Scores:\n");
+        System.out.print(gameScores);
 
         Scanner scanner = new Scanner(System.in);
     
@@ -322,6 +326,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                 System.out.println("exit (Leave)");    
                 System.out.println("? (Lookup)");   
                 System.out.println("! (Restart)");
+                System.out.print("\nCurrent Score:\n");
+                System.out.print(gameScores);
                 printUserGame(gameID);
                 
                 System.out.print("Enter guess: ");
@@ -337,19 +343,29 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                             accountManager.updateScore(name, false, gameState.checkMultiplayer());
                             inGameLoop = false;
                             state = GameState.READY;
-                            gameID = null;
+                            server.updateActivePlayer(gameID);
+                            gameState.removePlayer(name);
+                            if(gameState.getLobbySize() == 0) {
+                                server.exitGame(gameID);
+                                gameID = null;
+                            }
                         }
                         break;
 
                     case "!":
-                        System.out.print("This will count as a loss. Are you sure you want to restart? (y/n): ");
-                        input = scanner.nextLine().trim().toLowerCase();
-                        if ("y".equals(input)) {
-                            gameState = server.getGameState(gameID);
-                            accountManager.updateScore(name, false, gameState.checkMultiplayer());
-                            gameID = server.restartGame(gameID);
+                        if(gameState.getLobbySize() > 0) {
+                            System.out.print("Restarting Multiplayer Games is not allowed");
                         }
-                        printUserGame(gameID);
+                        else{
+                            System.out.print("This will count as a loss. Are you sure you want to restart? (y/n): ");
+                            input = scanner.nextLine().trim().toLowerCase();
+                            if ("y".equals(input)) {
+                                gameState = server.getGameState(gameID);
+                                accountManager.updateScore(name, false, gameState.checkMultiplayer());
+                                gameID = server.restartGame(gameID);
+                            }
+                            printUserGame(gameID);
+                        }
                         break;
 
                     case "?":
@@ -363,22 +379,62 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
                     default:
                         System.out.println("\nChecking word: " + input); // Use println instead of print
+                        currentGrid = server.getCurrentGrid(gameID);
                         gameID = server.checkGuess(server.getGameState(gameID), input);
+                        int addPoints = calculateScore(currentGrid, server.getCurrentGrid(gameID));
+                        System.out.println("\nADDING SCORE TEST: " + addPoints);
                         server.updateActivePlayer(gameID);
 
                         break;
                 }
             } else{
-                System.out.println("\nPlease Wait your turn");
-                while(!server.getActivePlayer(gameID).equals(name)) {
-                    try {
-                        Thread.sleep(1000);  // Sleep for 1 second
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();  // Handle the exception (you can log it or re-throw it depending on your needs)
+                String currentPlayer = server.getActivePlayer(gameID);
+                System.out.println("\nPlease Wait your turn, current player: " + server.getActivePlayer(gameID));
+                while(!currentPlayer.equals(name)) {
+                    if(!currentPlayer.equals(server.getActivePlayer(gameID)))
+                    {   
+                        gameScores = server.displayAllScores(gameID);
+                        System.out.print("\nCurrent Score:\n");
+                        System.out.print(gameScores);
+                        printUserGame(gameID);
+                        currentPlayer = server.getActivePlayer(gameID);
+                        System.out.println("\nPlease Wait your turn, current player: " + server.getActivePlayer(gameID));
+                    }
+                    else {
+                        try {
+                            Thread.sleep(1000);  // Sleep for 1 second
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();  // Handle the exception (you can log it or re-throw it depending on your needs)
+                        }
                     }
                 }
             }
         }
+    }
+
+    
+    public int calculateScore(char[][] currentGrid, char[][] comparisonGrid) {
+        int score = 0;
+    
+        // Ensure both grids have the same dimensions
+        if (currentGrid.length != comparisonGrid.length || currentGrid[0].length != comparisonGrid[0].length) {
+            throw new IllegalArgumentException("Grids must have the same dimensions!");
+        }
+
+        // Iterate through each cell in the grids
+        for (int i = 0; i < currentGrid.length; i++) {
+            for (int j = 0; j < currentGrid[i].length; j++) {
+                char currentChar = currentGrid[i][j];
+                char compareChar = comparisonGrid[i][j];
+
+                // Add 50 points for each differing character
+                if (currentChar != compareChar && compareChar == '-') {
+                    score += 50;
+                }
+            }
+        }
+
+        return score;
     }
 
     // Helper method to compare game states

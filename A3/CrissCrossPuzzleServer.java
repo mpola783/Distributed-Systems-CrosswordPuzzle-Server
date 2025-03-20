@@ -40,6 +40,9 @@ public interface CrissCrossPuzzleServer extends Remote{
 
     String getActivePlayer(String gameID) throws RemoteException;
     void updateActivePlayer(String gameID) throws RemoteException;
+    String displayAllScores(String gameID) throws RemoteException;
+    void updatePlayerScore(String gameID, String playerName, int points) throws RemoteException;
+    char[][] getCurrentGrid(String gameID) throws RemoteException;
 
     // list current multiplayer lobbies that haven't started.
     List<GameLobbyInfo> listLobbies() throws RemoteException;
