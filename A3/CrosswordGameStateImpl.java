@@ -170,7 +170,11 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
 
     @Override
     public boolean checkMultiplayer() {
-        return multiplayer;
+        System.out.println("\nPLAYER SIZE: " + players.size());
+        if(players.size() > 1) {
+            return true;
+        }
+        return false;
     }
 
     @Override

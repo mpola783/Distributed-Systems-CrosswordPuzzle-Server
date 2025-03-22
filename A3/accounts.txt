@@ -1,9 +1,11 @@
 matush,test,17,17
 LOGIN,test,0,0
 matush2,test,0,0
-matushy,testing,0,0,17,8
+matushy,testing,1,0,27,11
 mp,test,0,0,1,4
-mat,test,0,0,7,2
+mat,test,0,0,7,4
 m,t,0,0,0,0
 ma,tush,0,0,0,0
 matt,test,0,0,1,0
+matu,test,1,0,6,1
+matus,test,0,0,0,0

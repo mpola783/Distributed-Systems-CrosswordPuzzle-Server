@@ -26,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+
 public class ClientMicroservice { //extends UnicastRemoteObject implements GameEventListener 
 
     private String name = null; // Stores the player's username after login
@@ -38,6 +39,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private CrissCrossPuzzleServer server;
     private Scoreboard scoreboard;
     private static char[][] currentGrid;
+    private long sequenceNumber;  // Client's local sequence tracker
 
     private Scanner scanner = new Scanner(System.in); // Scanner instance for user input
     private BlockingQueue<String> eventQueue = new LinkedBlockingQueue<>(); // Event queue for handling game events
@@ -132,7 +134,10 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         String password = scanner.nextLine();
                         accountManager.loginUser(username, password);
                         name = username;
-                        //registerEventListener(); // Register user-specific listener after login
+                        
+                        this.sequenceNumber = server.registerClient(username); //REGISTER CLIENT
+                        sequenceNumber++;
+
                         state = GameState.READY;
                         System.out.println("\nLogin successful! Welcome, " + name);
                         break;
@@ -145,7 +150,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         System.out.println("Invalid choice. Try again.");
                 }
             } catch (Exception e) {
-                System.err.println("Invalid input. Please enter a number.");
+                System.err.println("Error during client registration: " + e.getMessage());
+                e.printStackTrace(); // This will show the stack trace for better debugging
                 scanner.nextLine(); // Consume invalid input
             }
         }
@@ -163,8 +169,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 		System.out.println("4. Add Word");
 		System.out.println("5. Start Singleplayer");
 		System.out.println("6. Start Multiplayer");
-		System.out.println("7. Join Multiplayer");
-        System.out.println("8. Logout");
+        System.out.println("7. Logout");
     
         int choice = -1; // Default value if no valid input is provided
         
@@ -211,7 +216,13 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     scanner.nextLine(); // consume newline
 
                     // Now call startGame on the instance
-                    gameID = server.startGame(name, numWords, failFactor, null);
+                    /////////////DUPLICATE CHECK
+                    gameID = null;
+                    gameID = server.startGame(name, numWords, failFactor, gameID, sequenceNumber);
+                    System.out.println("Start Game Sequence Number: " + sequenceNumber);
+                    gameID = server.startGame(name, numWords, failFactor, gameID, sequenceNumber);
+                    System.out.println("Start game Sequence Number: " + sequenceNumber);
+                    sequenceNumber++;
 
 					if (gameID != null) {
 						state = GameState.INGAME;
@@ -226,44 +237,12 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     failFactor = scanner.nextInt();
 
                     System.out.print("Waiting for game");
-					gameID = server.startMultiplayer(name, players, failFactor);
+					gameID = server.startMultiplayer(name, players, failFactor, sequenceNumber);
 					if (gameID != null) {
 					    state = GameState.INGAME;
 					}
 					break;
-                    case 7:
-                    try {
-                        // Retrieve available lobbies from the remote server
-                        List<GameLobbyInfo> lobbies = server.listLobbies();
-                        
-                        if (lobbies.isEmpty()) {
-                            System.out.println("No available lobbies at the moment. Please try again later.");
-                        } else {
-                            System.out.println("Available Lobbies:");
-                            for (int i = 0; i < lobbies.size(); i++) {
-                                System.out.println((i + 1) + ": " + lobbies.get(i).toString());
-                            }
-                            System.out.print("Enter the number of the lobby you wish to join: ");
-                            choice = scanner.nextInt();
-                            scanner.nextLine(); // consume the newline
-                            
-                            if (choice < 1 || choice > lobbies.size()) {
-                                System.out.println("Invalid selection. Please try again.");
-                            } else {
-                                // Get the selected lobby's game ID
-                                String selectedGameID = lobbies.get(choice - 1).getGameID();
-                                // Attempt to join the lobby using the game ID
-                                gameID = server.joinMultiplayer(name, selectedGameID);
-                                if (gameID != null) {
-                                    state = GameState.INGAME;
-                                }
-                            }
-                        }
-                    } catch (RemoteException e) {
-                        System.err.println("Error listing or joining lobby: " + e.getMessage());
-                    }
-                    break;
-				case 8:
+				case 7:
                     handleLogout();
                     break;
                 
@@ -286,8 +265,12 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         System.out.println("Type 'exit' to leave the game.");
         System.out.println("\nSetting up Game... Please Wait\n");
         printUserGame(gameID);
+        
+        CrosswordGameState gameState = server.getGameState(gameID);
+        boolean multiplayer = gameState.checkMultiplayer();
+
         System.out.println("\nStarting Game\n");
-        String gameScores = server.displayAllScores(gameID);
+        String gameScores = server.displayAllScores(gameID, sequenceNumber);
         System.out.print("\nCurrent Scores:\n");
         System.out.print(gameScores);
 
@@ -296,7 +279,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         // Main in-game loop for user commands
         boolean inGameLoop = true;
         while (inGameLoop && state == GameState.INGAME) {
-            CrosswordGameState gameState = server.getGameState(gameID);
+            gameState = server.getGameState(gameID);
             String activePlayer = server.getActivePlayer(gameID);
             
             if ("WIN".equals(gameState.getGameStatus()) || "LOSE".equals(gameState.getGameStatus())) {
@@ -305,23 +288,22 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
                 if ("LOSE".equals(gameState.getGameStatus())) {
                     System.out.println("GAME LOST\n");
-                    accountManager.updateScore(name, false, gameState.checkMultiplayer());
+                    accountManager.updateScore(name, false, multiplayer);
                 }
                 else {
                     System.out.println("GAME WON\n");
-                    accountManager.updateScore(name, true, gameState.checkMultiplayer());
+                    accountManager.updateScore(name, true, multiplayer);
                 }
                 
                 gameState.removePlayer(name);
                 if(gameState.getLobbySize() == 0) {
-                    server.exitGame(gameID);
+                    server.exitGame(gameID, sequenceNumber);
                     gameID = null;
                 }
             }
             else if(activePlayer.equals(name))
             {   
-                System.out.println("\nActive Player :" + activePlayer);
-                System.out.println("\nNAME :" + name);  
+                System.out.println("\nYou Are The Active Player :" + activePlayer);
                 System.out.println("\nEnter letter or word for guess"); 
                 System.out.println("exit (Leave)");    
                 System.out.println("? (Lookup)");   
@@ -343,17 +325,17 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                             accountManager.updateScore(name, false, gameState.checkMultiplayer());
                             inGameLoop = false;
                             state = GameState.READY;
-                            server.updateActivePlayer(gameID);
+                            server.updateActivePlayer(gameID, sequenceNumber);
                             gameState.removePlayer(name);
                             if(gameState.getLobbySize() == 0) {
-                                server.exitGame(gameID);
+                                server.exitGame(gameID, sequenceNumber);
                                 gameID = null;
                             }
                         }
                         break;
 
                     case "!":
-                        if(gameState.getLobbySize() > 0) {
+                        if(gameState.getLobbySize() > 1) {
                             System.out.print("Restarting Multiplayer Games is not allowed");
                         }
                         else{
@@ -362,7 +344,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                             if ("y".equals(input)) {
                                 gameState = server.getGameState(gameID);
                                 accountManager.updateScore(name, false, gameState.checkMultiplayer());
-                                gameID = server.restartGame(gameID);
+                                gameID = server.restartGame(gameID, sequenceNumber);
                             }
                             printUserGame(gameID);
                         }
@@ -380,10 +362,15 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     default:
                         System.out.println("\nChecking word: " + input); // Use println instead of print
                         currentGrid = server.getCurrentGrid(gameID);
-                        gameID = server.checkGuess(server.getGameState(gameID), input);
+                        gameID = server.checkGuess(server.getGameState(gameID), input, name, sequenceNumber);
+                        System.out.println("Check Guess Sequence Number: " + sequenceNumber);
+                        gameID = server.checkGuess(server.getGameState(gameID), input, name, sequenceNumber);
+                        System.out.println("Check Guess Sequence Number: " + sequenceNumber);
+                        sequenceNumber++;
+
                         int addPoints = calculateScore(currentGrid, server.getCurrentGrid(gameID));
-                        System.out.println("\nADDING SCORE TEST: " + addPoints);
-                        server.updateActivePlayer(gameID);
+                        //System.out.println("\nADDING SCORE TEST: " + addPoints);
+                        server.updateActivePlayer(gameID, sequenceNumber);
 
                         break;
                 }
@@ -393,7 +380,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                 while(!currentPlayer.equals(name)) {
                     if(!currentPlayer.equals(server.getActivePlayer(gameID)))
                     {   
-                        gameScores = server.displayAllScores(gameID);
+                        gameScores = server.displayAllScores(gameID, sequenceNumber);
                         System.out.print("\nCurrent Score:\n");
                         System.out.print(gameScores);
                         printUserGame(gameID);
@@ -404,7 +391,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         try {
                             Thread.sleep(1000);  // Sleep for 1 second
                         } catch (InterruptedException e) {
-                            e.printStackTrace();  // Handle the exception (you can log it or re-throw it depending on your needs)
+                            e.printStackTrace();
                         }
                     }
                 }
