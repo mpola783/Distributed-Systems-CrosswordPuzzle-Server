@@ -14,9 +14,9 @@ public interface CrissCrossPuzzleServer extends Remote {
 
 	void incrementSequence(String name) throws RemoteException;
 
-	String restartGame(String player, long sequenceNumber) throws RemoteException;
+	String restartGame(String gameID, String name, long sequenceNumber) throws RemoteException;
 
-	void exitGame(String gameID, long sequenceNumber) throws RemoteException;
+	void exitGame(String gameID, String name, long sequenceNumber) throws RemoteException;
 
 	/*
 	 * These are part of checkGuess public String guessLetter(String player,char
@@ -30,25 +30,24 @@ public interface CrissCrossPuzzleServer extends Remote {
 
 	// Starts a single-player game for the given player.
 	// Returns a game ID that the client can use to interact with the game.
-	String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID, long sequenceNumber)
-			throws RemoteException;
+	String startGame(String name, int numberOfWords, int failedAttemptFactor, String gameID, long sequenceNumber) throws RemoteException;
 
 	// Starts a multiplayer game lobby for the given player and number of players.
 	// Returns a game ID.
-	String startMultiplayer(String name, int numberOfPlayers, int gameLevel, long sequenceNumber)
-			throws RemoteException;
+	String startMultiplayer(String name, int numberOfPlayers, int gameLevel, String gameID, long sequenceNumber) throws RemoteException;
 
 	// Joins an existing multiplayer game using its game ID.
 	// When the lobby becomes full, the game logic is started.
-	String joinMultiplayer(String name, String gameID) throws RemoteException;
 
 	String getActivePlayer(String gameID) throws RemoteException;
 
-	void updateActivePlayer(String gameID, long sequenceNumber) throws RemoteException;
+	void updateActivePlayer(String gameID, String name, long sequenceNumber) throws RemoteException;
 
-	String displayAllScores(String gameID, long sequenceNumber) throws RemoteException;
+    boolean checkPlayerInGame(String gameID, String name) throws RemoteException;
 
-	void updatePlayerScore(String gameID, String playerName, int points, long sequenceNumber) throws RemoteException;
+	String displayAllScores(String gameID, String name, long sequenceNumber) throws RemoteException;
+
+	void updatePlayerScore(String gameID, String name, int points, long sequenceNumber) throws RemoteException;
 
 	char[][] getCurrentGrid(String gameID) throws RemoteException;
 

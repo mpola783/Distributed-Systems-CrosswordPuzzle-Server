@@ -36,7 +36,7 @@ public interface CrosswordGameState extends Remote {
     boolean checkMultiplayer() throws RemoteException;
     int getExpectedPlayers() throws RemoteException;
     void setExpectedPlayers(int num_players) throws RemoteException;
-    
+    boolean playerInGame(String name) throws RemoteException;
     //void setPlayers(List<PlayerScore> players) throws RemoteException;
 
     

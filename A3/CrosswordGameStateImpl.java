@@ -115,6 +115,7 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
         }
     }
     
+    
     public void setAlive(String playerName) throws RemoteException{
     	setState(PlayerState.Alive, playerName);
     }
@@ -176,6 +177,16 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
             }
         }
         System.out.println("Player not found: " + playerName);
+    }
+
+    @Override
+    public boolean playerInGame(String name) {
+        for (PlayerScore player : players) {
+            if (player.getPlayerName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

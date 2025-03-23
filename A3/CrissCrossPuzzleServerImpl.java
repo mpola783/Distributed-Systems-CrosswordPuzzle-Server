@@ -22,9 +22,9 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	private Map<String, CrosswordGameState> gameStates;
 	private Map<String, GameLobbyInfo> pendingLobbies = new HashMap<>();
 	private final ConcurrentHashMap<String, AtomicLong> gameSequenceNumbers = new ConcurrentHashMap<>();
-
+	
 	private static final int TIMELIMIT_SECONDS = 2;
-	private static final int TOLERANCE = 1;
+	private static final int TOLERANCE = 3;
 
 	// Constructor
 	public CrissCrossPuzzleServerImpl() throws RemoteException {
@@ -43,85 +43,84 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		}
 	}
 
-	public class ServerHeartbeat implements Runnable {
+	public class ServerHeartbeat implements Runnable{
 
 		private AccountManager accountManager;
 		private CrosswordGameState gameState;
-
+		
 		private String gameID;
 		private boolean active;
 		private String players[];
-		private int counters[];
-
-		public ServerHeartbeat(String gameID) throws RemoteException {
+		
+		public ServerHeartbeat(String gameID) {
+			gameState = gameStates.get(gameID);
 			this.gameID = gameID;
 			this.active = true;
-			gameState = gameStates.get(gameID);
-			players = gameState.getPlayerNames();
-			counters = new int[gameState.getExpectedPlayers()];
-			System.out.println("\nCounter: " + counters[0]);
-		}
-
-		public void run() {
-			System.out.println("\nConnected Heartbeat for " + gameID);
 			try {
 				accountManager = (AccountManager) Naming.lookup("rmi://localhost/AccountManager");
 			} catch (Exception e) {
 				System.err.println("Error connecting to RMI services: " + e.getMessage());
+				e.printStackTrace();
 			}
-			while (active) {
+		}
+		
+		public void run () {
+			int counter = 0;
+			System.out.println("\nConnected Heartbeat for " + gameID);
+			while(active) {
 				try {
 					TimeUnit.SECONDS.sleep(TIMELIMIT_SECONDS);
-					int index = 0;
-					for (String player : players) {
-						System.out.println("\nPlayer " + player + " is " + gameState.getState(player));
-						System.out.println("\nCurrent Level: " + counters[index]);
-						if (gameState.getState(player) == CrosswordGameState.PlayerState.Sus) {
-							if (counters[index] >= TOLERANCE) {
+					gameState = gameStates.get(gameID);
+					if(gameState == null) {
+						active = false;
+						break;
+					}
+
+					players = gameState.getPlayerNames();
+					
+					for(String player : players) {
+						if(gameState.getState(player) == CrosswordGameState.PlayerState.Sus) {
+							if(counter >= TOLERANCE) {
 								gameState.setDead(player);
 							}
-							counters[index]++;
-						} else if (gameState.getState(player) == CrosswordGameState.PlayerState.Alive) {
-							counters[index] = 0;
+							counter++;
+						} else if (gameState.getState(player) == CrosswordGameState.PlayerState.Alive){
+							counter = 0;
 							gameState.setSus(player);
 						} else {
-							System.out.println("\nPlayer " + player + " Kicked From Server.");
 							accountManager.updateScore(player, false, gameState.checkMultiplayer());
 							gameState.nextActivePlayer();
 							gameState.removePlayer(player);
 							if (gameState.getLobbySize() == 0) {
-								// exitGame(gameID); <-- MAKE SEQUENCE NUMBER CHANGE
+								exitGame(gameID, player, getNextSequenceNumber(player));
+                                gameID = null;
 								active = false;
 							}
-							gameState = gameStates.get(gameID);
-							players = gameState.getPlayerNames();
-							counters = new int[gameState.getExpectedPlayers()];
 						}
-						index++;
-					}					
+					}
+					
 				} catch (Exception e) {
 					System.err.println("\nConnection Failure.");
 					e.printStackTrace();
 					break;
 				}
 			}
-			System.out.println("\nLobby Heartbeat " + gameID + " Closed");
+			System.out.println("\nLobby " + gameID + " Closed");
 		}
-
 	}
-
-	@Override
-	// Assigns a sequence number when the client logs in
-	public long registerClient(String clientID) throws RemoteException {
-		gameSequenceNumbers.putIfAbsent(clientID, new AtomicLong(0)); // Start from 0
-		return gameSequenceNumbers.get(clientID).get();
-	}
-
+	
+    @Override
+    // Assigns a sequence number when the client logs in
+    public long registerClient(String clientID) throws RemoteException {
+        gameSequenceNumbers.putIfAbsent(clientID, new AtomicLong(0));  // Start from 0
+        return gameSequenceNumbers.get(clientID).get();
+    }
+	
 	// Method to get the game state by gameID
 	@Override
-	public CrosswordGameState getGameState(String gameID) throws RemoteException {
-		return gameStates.get(gameID);
-	}
+    public CrosswordGameState getGameState(String gameID) throws RemoteException {
+        return gameStates.get(gameID);
+    }
 
 ///////////////////////////NEW LOGIC TEST////////////////////////////////////////////////////////////////////////
 	@Override
@@ -133,11 +132,14 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	}
 
 	@Override
-	public String startMultiplayer(String name, int numberOfPlayers, int gameLevel, long sequenceNumber)
-			throws RemoteException {
-		String gameID = null;
+	public String startMultiplayer(String name, int numberOfPlayers, int gameLevel, String gameID, long sequenceNumber) throws RemoteException {
 		boolean isNewLobby = true;
 		CrosswordGameState gameState = null;
+
+        if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            return gameID;
+        }
 
 		// Check for an existing open lobby with the same settings
 		for (GameLobbyInfo lobby : pendingLobbies.values()) {
@@ -163,7 +165,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			gameState.addPlayer(name);
 			gameState.setExpectedPlayers(numberOfPlayers);
 			gameStates.put(gameID, gameState);
-
+			
 			GameLobbyInfo newLobby = new GameLobbyInfo(gameID, name, numberOfPlayers, gameLevel);
 			pendingLobbies.put(gameID, newLobby);
 
@@ -182,6 +184,8 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 				if (pendingLobbies.get(gameID).getHostName().equals(name)) {
 					gameID = startGame(name, numberOfPlayers, gameLevel, gameID, sequenceNumber);
 				}
+
+                incrementSequence(name);
 				return gameID;
 			}
 			try {
@@ -194,9 +198,15 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	}
 
 	@Override
-	public void updateActivePlayer(String gameID, long sequenceNumber) throws RemoteException {
-		CrosswordGameState gameState = gameStates.get(gameID);
-		gameState.nextActivePlayer();
+	public void updateActivePlayer(String gameID, String name, long sequenceNumber) throws RemoteException {
+		if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+        }
+        else {
+            CrosswordGameState gameState = gameStates.get(gameID);
+		    gameState.nextActivePlayer();
+            incrementSequence(name);
+        }
 	}
 
 	@Override
@@ -204,6 +214,13 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		CrosswordGameState gameState = gameStates.get(gameID);
 
 		return gameState.getActivePlayer();
+	}
+
+    @Override
+	public boolean checkPlayerInGame(String gameID, String name) throws RemoteException {
+		CrosswordGameState gameState = gameStates.get(gameID);
+
+		return gameState.playerInGame(name);
 	}
 
 	@Override
@@ -214,39 +231,30 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	}
 
 	@Override
-	public void updatePlayerScore(String gameID, String playerName, int points, long sequenceNumber)
-			throws RemoteException {
-		CrosswordGameState gameState = gameStates.get(gameID);
-
-		gameState.setPlayerScore(playerName, points);
+	public void updatePlayerScore(String gameID, String name, int points, long sequenceNumber) throws RemoteException{
+		if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+        }
+        else {
+            CrosswordGameState gameState = gameStates.get(gameID);
+		    gameState.setPlayerScore(name, points);
+            incrementSequence(name);
+        }
 	}
 
 	@Override
-	public String displayAllScores(String gameID, long sequenceNumber) throws RemoteException {
-		CrosswordGameState gameState = gameStates.get(gameID);
-
-		return gameState.displayScores();
+	public String displayAllScores(String gameID, String name, long sequenceNumber) throws RemoteException {
+		if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            return null;
+        }
+        else {
+            CrosswordGameState gameState = gameStates.get(gameID);
+            incrementSequence(name);
+		    return gameState.displayScores();
+        }
 	}
 
-	@Override
-	public String joinMultiplayer(String name, String gameID) throws RemoteException {
-		/*
-		 * CrosswordGameState gameState = gameStates.get(gameID); if (gameState == null)
-		 * { throw new RemoteException("Game with ID " + gameID + " not found."); } if
-		 * (gameState.getPlayers().size() >= gameState.getExpectedPlayers()) { throw new
-		 * RemoteException("Game is already full."); } gameState.addPlayer(name);
-		 * 
-		 * // Update lobby info. GameLobbyInfo lobby = pendingLobbies.get(gameID); if
-		 * (lobby != null) { lobby.incrementPlayers(); }
-		 * 
-		 * // If the lobby is now full, remove it from pending and start the game. if
-		 * (gameState.getPlayers().size() == gameState.getExpectedPlayers()) {
-		 * pendingLobbies.remove(gameID); // Generate the puzzle for the game.
-		 * generatePuzzle(gameState); /////////////create gamestate generator //
-		 * Optionally notify players that the game has started. }
-		 */
-		return gameID;
-	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -260,22 +268,21 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	 */
 
 	@Override
-	public String startGame(String player, int numberOfWords, int failedAttemptFactor, String gameID,
-			long sequenceNumber) throws RemoteException {
-		CrosswordGameState gameState;
+	public String startGame(String name, int numberOfWords, int failedAttemptFactor, String gameID, long sequenceNumber) throws RemoteException {
+        CrosswordGameState gameState;
 
-		if (checkDuplicate(player, sequenceNumber)) {
-			System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
-			return gameID;
-		}
-
+        if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            return gameID;
+        }
+        
 		// Validate number of words
 		if (!validateWordCount(numberOfWords)) {
 			System.out.println("Words chosen are not within 2 - 10, invalid prompt");
 			throw new RemoteException("Words chosen are not within 2 - 10.");
 		}
 
-		// If game doesn't exist set variable
+		//If game doesn't exist set variable
 		if (gameID == null) {
 			// Generate a unique game ID
 			gameID = UUID.randomUUID().toString();
@@ -283,21 +290,19 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			// create a new game state
 			gameState = new CrosswordGameStateImpl(gameID, numberOfWords, failedAttemptFactor);
 
-			gameState.addPlayer(player);
+			gameState.addPlayer(name);
 
 			// Store game state
 			gameStates.put(gameID, gameState);
 
 			(new Thread(new ServerHeartbeat(gameID))).start();
-
+			
 		} else {
 			// Retrieve existing game state
 			gameState = gameStates.get(gameID);
 		}
 
-		(new Thread(new ServerHeartbeat(gameID))).start();
-
-		gameState.setActivePlayer(player);
+		gameState.setActivePlayer(name);
 
 		// Fetch the vertical word from the word server
 		String vertWord = fetchVerticalWord(numberOfWords);
@@ -344,15 +349,20 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
 		gameStates.put(gameState.getGameID(), gameState);
 
-		incrementSequence(player);
-
+		incrementSequence(name);
+		
 		return gameState.getGameID();
 	}
 
 	@Override
-	public String restartGame(String gameID, long sequenceNumber) throws RemoteException {
+	public String restartGame(String gameID, String name, long sequenceNumber) throws RemoteException {
 		// Retrieve the game state using gameID
 		CrosswordGameState gameState = gameStates.get(gameID);
+
+        if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            return gameID;
+        }
 
 		// Check if the game exists
 		if (gameState != null) {
@@ -376,7 +386,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			// Notify the players that the game has been reset
 			System.out.println("Game has been reset successfully for game ID: " + gameID);
 
-			// Return a success message
+			incrementSequence(name);
 			return gameID;
 		} else {
 			// If the game doesn't exist
@@ -385,8 +395,14 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	}
 
 	@Override
-	public void exitGame(String gameID, long sequenceNumber) throws RemoteException {
-		gameStates.remove(gameID);
+	public void exitGame(String gameID, String name, long sequenceNumber) throws RemoteException {
+		if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+        }
+        else {
+            gameStates.remove(gameID);
+            incrementSequence(name);
+        }
 	}
 
 	/*
@@ -398,13 +414,12 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	 * layout and life counter if not
 	 */
 	@Override
-	public String checkGuess(CrosswordGameState gameState, String guess, String name, long sequenceNumber)
-			throws RemoteException {
+	public String checkGuess(CrosswordGameState gameState, String guess, String name, long sequenceNumber) throws RemoteException {
 
-		if (checkDuplicate(name, sequenceNumber)) {
-			System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
-			return gameState.getGameID(); // Return with no Changes
-		}
+        if(checkDuplicate(name, sequenceNumber)) {
+            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            return gameState.getGameID();  // Return with no Changes
+        }
 		System.out.println("\nChecking guess: " + guess);
 
 		gameState.setLives((gameState.getLives()) - 1);
@@ -434,7 +449,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		gameStates.put(gameState.getGameID(), gameState);
 
 		incrementSequence(name);
-
+		
 		return gameState.getGameID();
 	}
 
@@ -822,35 +837,45 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			System.out.println("Game with ID " + gameID + " not found.");
 		}
 	}
+	
+    public long getNextSequenceNumber(String name) {
+        gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
+
+        AtomicLong expectedSequence = gameSequenceNumbers.get(name);
+        long expectedSeqNumber = expectedSequence.get() + 1;
+
+        return expectedSeqNumber;
+    }
+
 
 	public boolean checkDuplicate(String name, long sequenceNumber) {
-		// Get the expected sequence number for the given game
-		gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
+        // Get the expected sequence number for the given game
+        gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
 
-		AtomicLong expectedSequence = gameSequenceNumbers.get(name);
-		long expectedSeqNumber = expectedSequence.get() + 1;
+        AtomicLong expectedSequence = gameSequenceNumbers.get(name);
+        long expectedSeqNumber = expectedSequence.get() + 1;
 
-		System.out.println("SeqNum: " + sequenceNumber);
-		System.out.println("ExpectedNum: " + expectedSeqNumber);
+        System.out.println("SeqNum: " + sequenceNumber);
+        System.out.println("ExpectedNum: " + expectedSeqNumber);
+        
+        // Check if the sequence number matches the expected one
+        if (sequenceNumber != expectedSeqNumber) {
+            System.out.println("Duplicate or out-of-order request detected: " + sequenceNumber);
+            return true;  // Reject duplicate or out-of-order request
+        }
+        
+        // If valid, increment the sequence number for next expected request
+        //System.out.println("Not a Duplicate");
+        return false;  // Not a duplicate
+    }
 
-		// Check if the sequence number matches the expected one
-		if (sequenceNumber != expectedSeqNumber) {
-			System.out.println("Duplicate or out-of-order request detected: " + sequenceNumber);
-			return true; // Reject duplicate or out-of-order request
-		}
+    @Override
+    public void incrementSequence(String name) throws RemoteException {
+        gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
 
-		// If valid, increment the sequence number for next expected request
-		// System.out.println("Not a Duplicate");
-		return false; // Not a duplicate
-	}
-
-	@Override
-	public void incrementSequence(String name) throws RemoteException {
-		gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
-
-		AtomicLong expectedSequence = gameSequenceNumbers.get(name);
-		expectedSequence.incrementAndGet();
-	}
+        AtomicLong expectedSequence = gameSequenceNumbers.get(name);
+        expectedSequence.incrementAndGet();
+    }
 
 	public boolean heartbeat(String name, String gameID) throws RemoteException {
 		CrosswordGameState gameState = gameStates.get(gameID);
