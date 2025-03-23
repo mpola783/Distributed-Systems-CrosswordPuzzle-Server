@@ -7,11 +7,12 @@ handles game identification, player management, game settings, and score managem
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
 import java.util.Arrays;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.RemoteException;
-import java.util.*;
-import java.io.*;
+//import java.util.*;
+//import java.io.*;
 import java.rmi.Naming;
 
 public class CrosswordGameStateImpl extends UnicastRemoteObject implements CrosswordGameState {
@@ -49,7 +50,6 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
         this.gameStatus = "Waiting";
     }
     
-
     public static void main(String[] args) {
         try {
             // Create the instance of the CrosswordGameStateImpl
@@ -65,14 +65,18 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
         }
     }
     
+    
     // Nested class to represent a tuple of player name and score.
     public static class PlayerScore implements Serializable {
-        private String playerName;
+		
+		private String playerName;
         private int score;
+        private PlayerState state;
         
-        public PlayerScore(String playerName, int score) {
+        public PlayerScore(String playerName, int score, PlayerState state) {
             this.playerName = playerName;
             this.score = score;
+            this.state = state;
         }
         
         public String getPlayerName() {
@@ -94,13 +98,43 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
     }
     
 
+    public PlayerState getState(String playerName) throws RemoteException{
+        for (PlayerScore player : players) {
+            if (player.getPlayerName().equals(playerName)) {
+                return player.state;
+            }
+        }
+        return PlayerState.Dead;
+    }
+    
+    public void setState(PlayerState state, String playerName) throws RemoteException{
+    	for (PlayerScore player : players) {
+            if (player.getPlayerName().equals(playerName)) {
+                player.state = state;
+            }
+        }
+    }
+    
+    public void setAlive(String playerName) throws RemoteException{
+    	setState(PlayerState.Alive, playerName);
+    }
+    
+    public void setSus(String playerName) throws RemoteException{
+    	setState(PlayerState.Sus, playerName);
+    }
+    
+    public void setDead(String playerName) throws RemoteException{
+    	setState(PlayerState.Dead, playerName);
+    }
+    
+    
 	/**
 	 * 	PLAYER / Players GETTERS AND SETTERS
 	*/
     // Add a player with an initial score of 0.
     @Override
     public void addPlayer(String playerName) {
-        players.add(new PlayerScore(playerName, 0));
+        players.add(new PlayerScore(playerName, 0, PlayerState.Alive));
         // If no active player is set, use the first added player.
         if (activePlayer == null) {
             activePlayer = playerName;
@@ -170,11 +204,11 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
 
     @Override
     public boolean checkMultiplayer() {
-        System.out.println("\nPLAYER SIZE: " + players.size());
-        if(players.size() > 1) {
-            return true;
-        }
-        return false;
+    	 System.out.println("\nPLAYER SIZE: " + players.size());
+         if(players.size() > 1) {
+             return true;
+         }
+         return false;
     }
 
     @Override
@@ -191,6 +225,10 @@ public class CrosswordGameStateImpl extends UnicastRemoteObject implements Cross
 	public int getExpectedPlayers() {
         return expectedPlayers;
     }
+    
+    
+    
+    
 
 	/**
 	 * 	LOBBY AND TURN BASED GETTERS AND SETTERS

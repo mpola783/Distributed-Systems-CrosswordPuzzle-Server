@@ -38,7 +38,7 @@ public class AccountManagerImpl extends UnicastRemoteObject implements AccountMa
             throw new RemoteException("File I/O error", e);
         }
         System.out.println("Login failed for user: " + name);
-        throw new RemoteException("Invalid login credentials");
+        throw new RemoteException("Invalid login credentials.");
     }
 
     @Override
@@ -49,22 +49,27 @@ public class AccountManagerImpl extends UnicastRemoteObject implements AccountMa
             while ((line = br.readLine()) != null) {
                 if (line.startsWith(name + ",")) {
                     System.out.println("User already exists: " + name);
-                    throw new RemoteException("User already exists");
+                    br.close();
+                    throw new RemoteException();
                 }
-            }
-        } catch (IOException e) {
+            }    
+            br.close();
+    	} catch (RemoteException e) {
+            throw new RemoteException("User already exists.");        
+    	} catch (IOException e) {
             System.err.println("File I/O error while creating user: " + name);
-            throw new RemoteException("File I/O error", e);
+            throw new RemoteException("File I/O error ", e);
         }
         
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
             bw.write(name + "," + password + ",0,0,0,0\n");
             System.out.println("User created successfully: " + name);
+            bw.close();
         } catch (IOException e) {
             System.err.println("Failed to create user: " + name);
-            throw new RemoteException("Failed to create user", e);
+            throw new RemoteException("Failed to create user ", e);
         }
-        return "User created successfully";
+        return "User created successfully!";
     }
 
     @Override

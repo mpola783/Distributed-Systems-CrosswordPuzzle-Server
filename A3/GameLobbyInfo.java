@@ -9,8 +9,6 @@
 import java.io.Serializable;
 
 public class GameLobbyInfo implements Serializable {
-
-    
     private String gameID;
     private String hostName;
     private int currentPlayers;

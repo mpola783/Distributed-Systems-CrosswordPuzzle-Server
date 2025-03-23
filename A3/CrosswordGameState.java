@@ -8,6 +8,16 @@ import java.rmi.RemoteException;
 import java.util.List;
 
 public interface CrosswordGameState extends Remote {
+    enum PlayerState {
+    	Alive,Sus,Dead
+    }
+    
+    PlayerState getState(String playerName) throws RemoteException;
+    void setState(PlayerState state, String playerName) throws RemoteException;
+    void setAlive(String playerName) throws RemoteException;
+    void setSus(String playerName) throws RemoteException;
+    void setDead(String playerName) throws RemoteException;
+    
     /** GAME IDENTIFICATION */
     String getGameID() throws RemoteException;
     void setGameID(String gameID) throws RemoteException;
@@ -26,8 +36,10 @@ public interface CrosswordGameState extends Remote {
     boolean checkMultiplayer() throws RemoteException;
     int getExpectedPlayers() throws RemoteException;
     void setExpectedPlayers(int num_players) throws RemoteException;
+    
     //void setPlayers(List<PlayerScore> players) throws RemoteException;
 
+    
     /** GAME SETTINGS */
     int getNumWords() throws RemoteException;
     void setNumWords(int numWords) throws RemoteException;
