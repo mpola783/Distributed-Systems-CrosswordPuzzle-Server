@@ -45,7 +45,7 @@ public interface CrissCrossPuzzleServer extends Remote {
 
     boolean checkPlayerInGame(String gameID, String name) throws RemoteException;
 
-	String displayAllScores(String gameID, String name, long sequenceNumber) throws RemoteException;
+	String displayAllScores(String gameID) throws RemoteException;
 
 	void updatePlayerScore(String gameID, String name, int points, long sequenceNumber) throws RemoteException;
 

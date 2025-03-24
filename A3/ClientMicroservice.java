@@ -289,11 +289,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         System.out.println("\nStarting Game\n");
 
         String gameScores;
-        gameScores = server.displayAllScores(gameID, name, sequenceNumber);
-        if (Math.random() < 0.5) {
-            gameScores = server.displayAllScores(gameID, name, sequenceNumber);
-        }
-        System.out.println("Display Scores Sequence Number: " + sequenceNumber);
+        gameScores = server.displayAllScores(gameID);
 
         sequenceNumber++;
 
@@ -438,11 +434,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     }
                     else if(!currentPlayer.equals(server.getActivePlayer(gameID)))
                     {      
-                        gameScores = server.displayAllScores(gameID, name, sequenceNumber);
-                        if (Math.random() < 0.5) {
-                            gameScores = server.displayAllScores(gameID, name, sequenceNumber);
-                        }
-                        System.out.println("Display Scores Sequence Number: " + sequenceNumber);
+                        gameScores = server.displayAllScores(gameID);
 
                         sequenceNumber++;
                         System.out.print("\nCurrent Score:\n");
@@ -620,8 +612,6 @@ public static void checkMissingNames(String[] allPlayers, String[] activePlayers
         }
     }
 }
-
-
 
 
 

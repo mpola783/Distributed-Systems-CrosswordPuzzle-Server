@@ -58,7 +58,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			this.active = true;
 			gameState = gameStates.get(gameID);
 			players = gameState.getPlayerNames();
-			counters = new int[gameState.getExpectedPlayers()];
+			counters = new int[gameState.getLobbySize()];
 			System.out.println("\nCounter: " + counters[0]);
 		}
 
@@ -244,16 +244,11 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	}
 
 	@Override
-	public String displayAllScores(String gameID, String name, long sequenceNumber) throws RemoteException {
-		if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
-            return null;
-        }
-        else {
-            CrosswordGameState gameState = gameStates.get(gameID);
-            incrementSequence(name);
-		    return gameState.displayScores();
-        }
+	public String displayAllScores(String gameID) throws RemoteException {
+
+        CrosswordGameState gameState = gameStates.get(gameID);
+		return gameState.displayScores();
+        
 	}
 
 
