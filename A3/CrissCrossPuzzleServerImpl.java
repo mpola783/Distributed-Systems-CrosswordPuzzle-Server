@@ -43,70 +43,71 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		}
 	}
 
-	public class ServerHeartbeat implements Runnable{
+	public class ServerHeartbeat implements Runnable {
 
 		private AccountManager accountManager;
 		private CrosswordGameState gameState;
-		
+
 		private String gameID;
 		private boolean active;
 		private String players[];
-		
-		public ServerHeartbeat(String gameID) {
-			gameState = gameStates.get(gameID);
+		private int counters[];
+
+		public ServerHeartbeat(String gameID) throws RemoteException {
 			this.gameID = gameID;
 			this.active = true;
+			gameState = gameStates.get(gameID);
+			players = gameState.getPlayerNames();
+			counters = new int[gameState.getExpectedPlayers()];
+			System.out.println("\nCounter: " + counters[0]);
+		}
+
+		public void run() {
+			System.out.println("\nConnected Heartbeat for " + gameID);
 			try {
 				accountManager = (AccountManager) Naming.lookup("rmi://localhost/AccountManager");
 			} catch (Exception e) {
 				System.err.println("Error connecting to RMI services: " + e.getMessage());
-				e.printStackTrace();
 			}
-		}
-		
-		public void run () {
-			int counter = 0;
-			System.out.println("\nConnected Heartbeat for " + gameID);
-			while(active) {
+			while (active) {
 				try {
 					TimeUnit.SECONDS.sleep(TIMELIMIT_SECONDS);
-					gameState = gameStates.get(gameID);
-					if(gameState == null) {
-						active = false;
-						break;
-					}
-
-					players = gameState.getPlayerNames();
-					
-					for(String player : players) {
-						if(gameState.getState(player) == CrosswordGameState.PlayerState.Sus) {
-							if(counter >= TOLERANCE) {
+					int index = 0;
+					for (String player : players) {
+						System.out.println("\nPlayer " + player + " is " + gameState.getState(player));
+						System.out.println("\nCurrent Level: " + counters[index]);
+						if (gameState.getState(player) == CrosswordGameState.PlayerState.Sus) {
+							if (counters[index] >= TOLERANCE) {
 								gameState.setDead(player);
 							}
-							counter++;
-						} else if (gameState.getState(player) == CrosswordGameState.PlayerState.Alive){
-							counter = 0;
+							counters[index]++;
+						} else if (gameState.getState(player) == CrosswordGameState.PlayerState.Alive) {
+							counters[index] = 0;
 							gameState.setSus(player);
 						} else {
+							System.out.println("\nPlayer " + player + " Kicked From Server.");
 							accountManager.updateScore(player, false, gameState.checkMultiplayer());
 							gameState.nextActivePlayer();
 							gameState.removePlayer(player);
 							if (gameState.getLobbySize() == 0) {
-								exitGame(gameID, player, getNextSequenceNumber(player));
-                                gameID = null;
+								// exitGame(gameID); <-- MAKE SEQUENCE NUMBER CHANGE
 								active = false;
 							}
+							gameState = gameStates.get(gameID);
+							players = gameState.getPlayerNames();
+							counters = new int[gameState.getExpectedPlayers()];
 						}
-					}
-					
+						index++;
+					}					
 				} catch (Exception e) {
 					System.err.println("\nConnection Failure.");
 					e.printStackTrace();
 					break;
 				}
 			}
-			System.out.println("\nLobby " + gameID + " Closed");
+			System.out.println("\nLobby Heartbeat " + gameID + " Closed");
 		}
+
 	}
 	
     @Override
@@ -301,7 +302,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			// Retrieve existing game state
 			gameState = gameStates.get(gameID);
 		}
-
+		(new Thread(new ServerHeartbeat(gameID))).start();
 		gameState.setActivePlayer(name);
 
 		// Fetch the vertical word from the word server

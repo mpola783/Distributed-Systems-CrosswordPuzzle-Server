@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.Objects;
-
+import java.util.Set;
+import java.util.HashSet;
 
 //was used for diff polling paradigm, kept for ref
 import java.util.concurrent.BlockingQueue;
@@ -291,7 +292,12 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         System.out.print(gameScores);
 
         Scanner scanner = new Scanner(System.in);
-    
+        startMissingNamesCheck(gameState);
+
+
+
+        
+
         // Main in-game loop for user commands
         boolean inGameLoop = true;
         
@@ -299,6 +305,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
             gameState = server.getGameState(gameID);
             String activePlayer = server.getActivePlayer(gameID);
             
+
             if ("WIN".equals(gameState.getGameStatus()) || "LOSE".equals(gameState.getGameStatus())) {
                 inGameLoop = false;
                 state = GameState.READY;
@@ -525,6 +532,67 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         return gameID;
     }
 
+
+
+
+
+
+
+   // Helper method to start a thread that periodically checks for missing players
+private void startMissingNamesCheck(final CrosswordGameState gameState) {
+    // Use an AtomicReference to hold the existing players so we can update it
+    final AtomicReference<String[]> existingPlayersRef = new AtomicReference<>();
+    try {
+        existingPlayersRef.set(gameState.getPlayerNames());
+    } catch (RemoteException e) {
+        e.printStackTrace();
+        return;
+    }
+
+    // Create and start a thread that calls checkMissingNames 
+    Thread missingNamesThread = new Thread(() -> {
+        while (true) {
+            try {
+                // Get the current active players
+                String[] currentPlayers = gameState.getPlayerNames();
+
+                if (currentPlayers == null || currentPlayers.length == 0) {
+                    //exit thread on player list empty
+                    break;
+                }
+
+                // Compare with the expected list stored in existingPlayersRef
+                checkMissingNames(existingPlayersRef.get(), currentPlayers);
+                // Update the existing players to the current players for the next iteration
+                existingPlayersRef.set(currentPlayers);
+                Thread.sleep(1000); // sleep for 1/2 second
+            } catch (InterruptedException e) {
+                System.out.println("Missing names thread interrupted.");
+                break;
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+    });
+    // Optional: Mark this thread as daemon so it doesn't block the JVM from exiting
+    missingNamesThread.setDaemon(true);
+    missingNamesThread.start();
+}
+
+// Function that checks for names in fullList missing from checkList
+public static void checkMissingNames(String[] allPlayers, String[] activePlayers) {
+    Set<String> checkSet = new HashSet<>(Arrays.asList(activePlayers));
+    for (String name : allPlayers) {
+        if (!checkSet.contains(name)) {
+            System.out.println("\n" + name + " has been disconnected from the game.\n");
+        }
+    }
+}
+
+
+
+
+
     /**
      * Main method to start the client microservice.
      */
@@ -537,14 +605,4 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
 
