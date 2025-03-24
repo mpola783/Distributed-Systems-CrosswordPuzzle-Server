@@ -221,8 +221,12 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     gameID = null;
                     gameID = server.startGame(name, numWords, failFactor, gameID, sequenceNumber);
                     System.out.println("Start Game Sequence Number: " + sequenceNumber);
-                    gameID = server.startGame(name, numWords, failFactor, gameID, sequenceNumber);
-                    System.out.println("Start game Sequence Number: " + sequenceNumber);
+
+                    if (Math.random() < 0.5) {
+                        gameID = server.startGame(name, numWords, failFactor, gameID, sequenceNumber);
+                        System.out.println("Start game Sequence Number: " + sequenceNumber);
+                    }
+
                     sequenceNumber++;
 
 					if (gameID != null) {
@@ -241,8 +245,10 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     gameID = null;
 					gameID = server.startMultiplayer(name, players, failFactor, gameID, sequenceNumber);
                     System.out.println("\nStart Multiplayer Game Sequence Number: " + sequenceNumber);
-                    gameID = server.startMultiplayer(name, players, failFactor, gameID, sequenceNumber);
-                    System.out.println("Start game Sequence Number: " + sequenceNumber);
+                    if (Math.random() < 0.5) {
+                        gameID = server.startMultiplayer(name, players, failFactor, gameID, sequenceNumber);
+                        System.out.println("\nStart Multiplayer Game Sequence Number: " + sequenceNumber);
+                    }
                     sequenceNumber++;
 
 					if (gameID != null) {
@@ -284,8 +290,11 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
         String gameScores;
         gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+        if (Math.random() < 0.5) {
+            gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+        }
         System.out.println("Display Scores Sequence Number: " + sequenceNumber);
-        gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+
         sequenceNumber++;
 
         System.out.print("\nCurrent Scores:\n");
@@ -322,8 +331,11 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                 gameState.removePlayer(name);
                 if(gameState.getLobbySize() == 0) {
                     server.exitGame(gameID, name, sequenceNumber);
+                    if (Math.random() < 0.5) {
+                        server.exitGame(gameID, name, sequenceNumber);
+                    }
                     System.out.println("Exit Game Sequence Number: " + sequenceNumber);
-                    server.exitGame(gameID, name, sequenceNumber);
+       
                     sequenceNumber++; 
                     gameID = null;
                 }
@@ -368,8 +380,11 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                                 gameState = server.getGameState(gameID);
                                 accountManager.updateScore(name, false, gameState.checkMultiplayer());
                                 gameID = server.restartGame(gameID, name, sequenceNumber);
+                                if (Math.random() < 0.5) {
+                                    gameID = server.restartGame(gameID, name, sequenceNumber);
+                                }
                                 System.out.println("Restart Game Sequence Number: " + sequenceNumber);
-                                gameID = server.restartGame(gameID, name, sequenceNumber);
+
                                 sequenceNumber++;
                             }
                             printUserGame(gameID);
@@ -390,15 +405,22 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         currentGrid = server.getCurrentGrid(gameID);
                         gameID = server.checkGuess(server.getGameState(gameID), input, name, sequenceNumber);
                         System.out.println("Check Guess Sequence Number: " + sequenceNumber);
-                        gameID = server.checkGuess(server.getGameState(gameID), input, name, sequenceNumber);
-                        System.out.println("Check Guess Sequence Number: " + sequenceNumber);
+                        if (Math.random() < 0.5) {
+                            gameID = server.checkGuess(server.getGameState(gameID), input, name, sequenceNumber);
+                            System.out.println("Check Guess Sequence Number: " + sequenceNumber);
+                        }
+
                         sequenceNumber++;
 
                         int addPoints = calculateScore(currentGrid, server.getCurrentGrid(gameID));
                         //System.out.println("\nADDING SCORE TEST: " + addPoints);
                         server.updateActivePlayer(gameID, name, sequenceNumber);
+                        if (Math.random() < 0.5) {
+                            server.updateActivePlayer(gameID, name, sequenceNumber);
+
+                        }
                         System.out.println("Update Active Player Sequence Number: " + sequenceNumber);
-                        server.updateActivePlayer(gameID, name, sequenceNumber);
+
                         sequenceNumber++;
 
                         break;
@@ -417,8 +439,11 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     else if(!currentPlayer.equals(server.getActivePlayer(gameID)))
                     {      
                         gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+                        if (Math.random() < 0.5) {
+                            gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+                        }
                         System.out.println("Display Scores Sequence Number: " + sequenceNumber);
-                        gameScores = server.displayAllScores(gameID, name, sequenceNumber);
+
                         sequenceNumber++;
                         System.out.print("\nCurrent Score:\n");
                         System.out.print(gameScores);
@@ -516,15 +541,22 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         accountManager.updateScore(name, false, gameState.checkMultiplayer());
         
         server.updateActivePlayer(gameID, name, sequenceNumber);
-        System.out.println("Update Active Player Sequence Number: " + sequenceNumber);
+        if (Math.random() < 0.5) {
+            server.updateActivePlayer(gameID, name, sequenceNumber);
+        }
         server.updateActivePlayer(gameID, name, sequenceNumber);
+        System.out.println("Update Active Player Sequence Number: " + sequenceNumber);
+
         sequenceNumber++;
 
         gameState.removePlayer(name);
         if(gameState.getLobbySize() == 0) {
             server.exitGame(gameID, name, sequenceNumber);
+            if (Math.random() < 0.5) {
+                server.exitGame(gameID, name, sequenceNumber);
+            }
             System.out.println("Exit Game Sequence Number: " + sequenceNumber);
-            server.exitGame(gameID, name, sequenceNumber);
+
             sequenceNumber++;
             gameID = null;
         }
