@@ -138,7 +138,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		CrosswordGameState gameState = null;
 
         if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            System.out.println("\nDuplicate Multiplayer Request: " + sequenceNumber + ", request cancelled");
             return gameID;
         }
 
@@ -186,8 +186,8 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 					gameID = startGame(name, numberOfPlayers, gameLevel, gameID, sequenceNumber);
 				}
 
-                incrementSequence(name);
-				return gameID;
+                incrementSequence(name);        //Increase sequence number after Successful completion
+				return gameID;  
 			}
 			try {
 				Thread.sleep(3000); // Wait 3 seconds before checking again
@@ -201,12 +201,12 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	@Override
 	public void updateActivePlayer(String gameID, String name, long sequenceNumber) throws RemoteException {
 		if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            System.out.println("\nDuplicate Update Request: " + sequenceNumber + ", request cancelled");
         }
         else {
             CrosswordGameState gameState = gameStates.get(gameID);
 		    gameState.nextActivePlayer();
-            incrementSequence(name);
+            incrementSequence(name);        //Increase sequence number after Successful completion
         }
 	}
 
@@ -234,12 +234,12 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	@Override
 	public void updatePlayerScore(String gameID, String name, int points, long sequenceNumber) throws RemoteException{
 		if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            System.out.println("\nDuplicate Update Request: " + sequenceNumber + ", request cancelled");
         }
         else {
             CrosswordGameState gameState = gameStates.get(gameID);
 		    gameState.setPlayerScore(name, points);
-            incrementSequence(name);
+            incrementSequence(name);    //Increase sequence number after Successful completion
         }
 	}
 
@@ -268,7 +268,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         CrosswordGameState gameState;
 
         if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            System.out.println("\nDuplicate Start Game Request: " + sequenceNumber + ", request cancelled");
             return gameID;
         }
         
@@ -345,7 +345,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
 		gameStates.put(gameState.getGameID(), gameState);
 
-		incrementSequence(name);
+		incrementSequence(name);        //Increase sequence number after Successful completion
 		
 		return gameState.getGameID();
 	}
@@ -382,7 +382,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 			// Notify the players that the game has been reset
 			System.out.println("Game has been reset successfully for game ID: " + gameID);
 
-			incrementSequence(name);
+			incrementSequence(name);        //Increase sequence number after Successful completion
 			return gameID;
 		} else {
 			// If the game doesn't exist
@@ -397,7 +397,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         }
         else {
             gameStates.remove(gameID);
-            incrementSequence(name);
+            incrementSequence(name);    //Increase sequence number after Successful completion
         }
 	}
 
@@ -413,7 +413,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 	public String checkGuess(CrosswordGameState gameState, String guess, String name, long sequenceNumber) throws RemoteException {
 
         if(checkDuplicate(name, sequenceNumber)) {
-            System.out.println("\nDuplicate Request: " + sequenceNumber + ", request cancelled");
+            System.out.println("\nDuplicate Checking Request: " + sequenceNumber + ", request cancelled");
             return gameState.getGameID();  // Return with no Changes
         }
 		System.out.println("\nChecking guess: " + guess);
@@ -444,7 +444,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 
 		gameStates.put(gameState.getGameID(), gameState);
 
-		incrementSequence(name);
+		incrementSequence(name);        //Increase sequence number after Successful completion
 		
 		return gameState.getGameID();
 	}
@@ -843,7 +843,11 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         return expectedSeqNumber;
     }
 
-
+    
+    /**
+     * Function to check for a duplicate request
+     * Compares the given sequence number with the next expected request number
+     */
 	public boolean checkDuplicate(String name, long sequenceNumber) {
         // Get the expected sequence number for the given game
         gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
@@ -860,11 +864,12 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
             return true;  // Reject duplicate or out-of-order request
         }
         
-        // If valid, increment the sequence number for next expected request
-        //System.out.println("Not a Duplicate");
         return false;  // Not a duplicate
     }
 
+    /**
+     * Function to increase sequence number after successful request
+     */
     @Override
     public void incrementSequence(String name) throws RemoteException {
         gameSequenceNumbers.putIfAbsent(name, new AtomicLong(0));
@@ -873,6 +878,10 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         expectedSequence.incrementAndGet();
     }
 
+    /**
+     *  Function to keep track of Player States and connection to game
+     *  Purpose is to keep live connection to users and will kick users from game for inactivity
+     */
 	public boolean heartbeat(String name, String gameID) throws RemoteException {
 		CrosswordGameState gameState = gameStates.get(gameID);
 		if (gameState == null) {
@@ -890,6 +899,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
 		System.out.println("User " + name + " not in lobby.");
 		return false;
 	}
+
 
 	public static void main(String[] args) {
 		try {
