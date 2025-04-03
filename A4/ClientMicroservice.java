@@ -37,6 +37,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private WordServer wordServer;
     private CrosswordGameState CrosswordGameState;
     private CrissCrossPuzzleServer server;
+    private ReceiverInterface client; 
     private ReceiverInterface receiver; 
     private static char[][] currentGrid;
 
@@ -61,7 +62,6 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
             wordServer = (WordServer) Naming.lookup("rmi://localhost/WordServer");
             CrosswordGameState = (CrosswordGameState) Naming.lookup("rmi://localhost/CrosswordGameState");
             server = (CrissCrossPuzzleServer) Naming.lookup("rmi://localhost/CrissCrossPuzzleServer");
-            receiver = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface");
         } catch (Exception e) {
             System.err.println("Error connecting to RMI services: " + e.getMessage());
             e.printStackTrace();
@@ -134,7 +134,9 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         String password = scanner.nextLine();
                         accountManager.loginUser(username, password);
                         name = username;
-                        //registerEventListener(); // Register user-specific listener after login
+                        client = new ReceiverImpl(name); // Create the Receiver object
+                        Naming.rebind("rmi://localhost/ReceiverInterface/" + name, client);
+
                         state = GameState.READY;
                         System.out.println("\nLogin successful! Welcome, " + name);
                         break;
@@ -251,12 +253,6 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
      * TODO: Implement full functionality for INGAME state operations.
      */
     private void handleInGame() throws RemoteException {
-        try {
-            ReceiverImpl client = new ReceiverImpl(name);
-            Naming.rebind(name, client);
-        } catch (MalformedURLException e) {
-        System.err.println("MalformedURLException: " + e.getMessage());
-        }
 
         System.out.println("\nYou are now in-game.");
         System.out.println("Type 'exit' to leave the game.");
@@ -269,6 +265,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
         CrosswordGameState gameState = server.getGameState(gameID);
         char[][] playerGrid = gameState.getPlayerGrid();
+
+        //client.receiveMessage("Hello, matu !", 5);
 
         Scanner scanner = new Scanner(System.in);
     
@@ -358,8 +356,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         System.out.println("\nChecking word: " + input); // Use println instead of print
                         currentGrid = server.getCurrentGrid(gameID);
                         playerGrid = server.checkGuess(server.getGameState(gameID), input);
-                        String message = "Player " + name + "made a guess: " + input; 
-                        receiver.sendMessage(gameState.getPlayerNames(), message);
+                        String message = "\nPlayer " + name + "made a guess: " + input; 
+                        client.sendMessage(gameState.getPlayerNames(), message);
                         break;
                 }
             }

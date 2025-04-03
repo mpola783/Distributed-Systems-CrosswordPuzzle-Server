@@ -54,6 +54,7 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
     }
 
     public ReceiverImpl(String name) throws RemoteException {
+        super();
         this.processName = name;
         this.clock = new LamportClock();
     }
@@ -85,10 +86,11 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
     public void sendMessage(String[] players, String message) throws RemoteException {
         try {
             int newTimestamp = clock.tick();
-            Message msg = new Message(message, newTimestamp);
-            
+            //Message msg = new Message(message, newTimestamp);
+            System.out.println("got here");
+
             for (String player : players) {
-                ReceiverInterface target = (ReceiverInterface) Naming.lookup(player);
+                ReceiverInterface target = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface/" + player);
                 target.receiveMessage(message, newTimestamp);
                 System.out.println("[" + processName + "] Sent: " + message + " to " + player);
             }
@@ -99,11 +101,17 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
 
     public static void main(String[] args) {
         try {
-            ReceiverImpl server = new ReceiverImpl("");
-            // Bind the server object to the RMI registry with a unique name
-            Naming.rebind("ReceiverImpl", server);
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("Enter process name: ");
+            String processName = scanner.nextLine().trim(); // Get user-defined name
 
+            // Create the ReceiverImpl instance with the chosen name
+            ReceiverImpl server = new ReceiverImpl(processName);
+            
+            // Bind it with a unique RMI name
+            Naming.rebind("rmi://localhost/ReceiverInterface/" + processName, server);
             System.out.println("Receiver Interface is running...");
+
         } catch (Exception e) {
             System.err.println("Error starting Receiver Interface");
             e.printStackTrace();
