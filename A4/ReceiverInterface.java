@@ -24,8 +24,8 @@
   */
  public interface ReceiverInterface extends Remote {
 
-     boolean receiveMessage(String m, int timestamp) throws RemoteException;
-     void sendMessage(String[] players, String message) throws RemoteException;
+     boolean receiveMessage(String guess, String senderID, int timestamp) throws RemoteException;
+     void sendMessage(String[] players, String sender, String message) throws RemoteException;
      void doEvent(String event, char[][] grid) throws RemoteException;
  }
  

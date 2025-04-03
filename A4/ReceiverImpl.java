@@ -21,6 +21,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.*;
 import java.util.Scanner;
 import java.io.Serializable;
+import java.util.*;   
 
 /**
  * Implements the ReceiverInterface, handling message reception and processing.
@@ -28,30 +29,37 @@ import java.io.Serializable;
 public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterface {
     private String processName;  // The name of this process
     private LamportClock clock;  // The Lamport clock instance
-    
+    private PriorityQueue<Message> messageQueue = new PriorityQueue<>();
+    private Map<String, Integer> lastSeenTimestamps = new HashMap<>();
 
-    public class Message implements Serializable {
-        private String content; // Message content
-        private int timestamp;  // Associated Lamport timestamp
- 
+    public class Message implements Comparable<Message> {
+        private final String content;
+        private final String senderID;
+        private final int timestamp;
 
-        public Message(String content, int timestamp) {
+        public Message(String content, String senderID, int timestamp) {
             this.content = content;
+            this.senderID = senderID;
             this.timestamp = timestamp;
         }
- 
-        public String getContent() {
-            return content;
-        }
- 
-        public int getTimestamp() {
-            return timestamp;
+
+        public String getContent() { return content; }
+        public String getSenderID() { return senderID; }
+        public int getTimestamp() { return timestamp; }
+
+        @Override
+        public int compareTo(Message other) {
+            // First compare timestamps
+            int timeCompare = Integer.compare(this.timestamp, other.timestamp);
+            // Tie-breaker: compare sender IDs (assumes lexicographical order is consistent)
+            return (timeCompare != 0) ? timeCompare : this.senderID.compareTo(other.senderID);
         }
 
+        @Override
         public String toString() {
-            return "Message: '" + content + "' | Timestamp: " + timestamp;
+            return "[" + senderID + " @ " + timestamp + "] " + content;
         }
-    }
+    } 
 
     public ReceiverImpl(String name) throws RemoteException {
         super();
@@ -61,13 +69,50 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
 
 
     @Override
-    public boolean receiveMessage(String m, int receivedTimestamp) throws RemoteException {
+    public boolean receiveMessage(String guess, String senderID, int receivedTimestamp) throws RemoteException {
         int oldInternalTimestamp = clock.getTime();
         int newTimestamp = clock.update(receivedTimestamp);
-        System.out.println("[" + processName + "] Received: " + m 
-            + " | Previous Internal Timestamp: " + oldInternalTimestamp 
-            + " | Updated Timestamp: " + newTimestamp);
+
+        // Track the latest message timestamp received from sender
+        lastSeenTimestamps.put(senderID, receivedTimestamp);
+
+        // Add to the priority queue
+        Message msg = new Message(guess, senderID, receivedTimestamp);
+        messageQueue.add(msg);
+
+        System.out.println("[" + processName + "] Queued: " + msg);
+
+        deliverMessagesInOrder(); // Try to deliver if safe
+
         return true;
+    }
+
+    private void deliverMessagesInOrder() {
+        while (!messageQueue.isEmpty()) {
+            Message head = messageQueue.peek();  // Get the earliest message
+
+            // Check if all senders have sent something newer than this
+            boolean safeToDeliver = true;
+
+            for (String sender : lastSeenTimestamps.keySet()) {
+                if (sender.equals(head.getSenderID())) continue; // skip FIFO part; already guaranteed
+
+                int lastSeen = lastSeenTimestamps.getOrDefault(sender, -1);
+                if (lastSeen <= head.getTimestamp()) {
+                    safeToDeliver = false;
+                    break;
+                }
+            }
+
+            if (safeToDeliver) {
+                // All conditions satisfied, deliver
+                System.out.println("[" + processName + "] Delivered: " + head);
+                messageQueue.poll();  // Remove the head
+            } else {
+                // Not safe to deliver yet
+                break;
+            }
+        }
     }
 
 
@@ -83,16 +128,21 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
      * @param message The message content.
      */
     @Override
-    public void sendMessage(String[] players, String message) throws RemoteException {
+    public void sendMessage(String[] players, String senderID, String guess) throws RemoteException {
         try {
             int newTimestamp = clock.tick();
             //Message msg = new Message(message, newTimestamp);
-            System.out.println("got here");
 
             for (String player : players) {
-                ReceiverInterface target = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface/" + player);
-                target.receiveMessage(message, newTimestamp);
-                System.out.println("[" + processName + "] Sent: " + message + " to " + player);
+                if (!player.equals(senderID)) { // Skip the sender
+                    ReceiverInterface target = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface/" + player);
+                    target.receiveMessage(guess, senderID, newTimestamp);
+                    System.out.println("[" + processName + "] Guessed: " + guess + " -> Sent to " + player);
+                }
+                else {
+                    System.out.println("\nSkipping Sender\n");
+                    System.out.println("Updated Timestamp: " + newTimestamp);
+                }
             }
         } catch (Exception e) {
             System.err.println("Failed to send message: " + e.getMessage());

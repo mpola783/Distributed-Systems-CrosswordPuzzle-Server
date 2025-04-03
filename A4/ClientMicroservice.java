@@ -266,8 +266,6 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         CrosswordGameState gameState = server.getGameState(gameID);
         char[][] playerGrid = gameState.getPlayerGrid();
 
-        //client.receiveMessage("Hello, matu !", 5);
-
         Scanner scanner = new Scanner(System.in);
     
         // Main in-game loop for user commands
@@ -354,10 +352,9 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
                     default:
                         System.out.println("\nChecking word: " + input); // Use println instead of print
-                        currentGrid = server.getCurrentGrid(gameID);
-                        playerGrid = server.checkGuess(server.getGameState(gameID), input);
-                        String message = "\nPlayer " + name + "made a guess: " + input; 
-                        client.sendMessage(gameState.getPlayerNames(), message);
+                        currentGrid = server.getCurrentGrid(gameID); 
+                        client.sendMessage(gameState.getPlayerNames(), name, input);
+                        gameID = server.updateGuess(server.getGameState(gameID), input);
                         break;
                 }
             }
