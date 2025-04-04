@@ -60,6 +60,10 @@ public class Game {
         return lives;
     }
 
+    public void setLives(int lives) {
+        this.lives = lives;
+    }
+
     public void loseLife() {
         if (lives > 0) lives--;
         if (lives == 0) gameStatus = "lost";

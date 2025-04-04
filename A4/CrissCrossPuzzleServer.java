@@ -32,7 +32,7 @@ public interface CrissCrossPuzzleServer extends Remote{
 
     // Starts a multiplayer game lobby for the given player and number of players.
     // Returns a game ID.
-    String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException;
+    Game startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException;
 
     // Joins an existing multiplayer game using its game ID.
     // When the lobby becomes full, the game logic is started.

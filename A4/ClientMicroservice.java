@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.Objects;
 import java.net.MalformedURLException;
+import game.Game;
 
 
 //was used for diff polling paradigm, kept for ref
@@ -38,7 +39,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private CrosswordGameState CrosswordGameState;
     private CrissCrossPuzzleServer server;
     private ReceiverInterface client; 
-    private ReceiverInterface receiver; 
+    private ReceiverInterface receiver;
+    private Game game;
     private static char[][] currentGrid;
 
     private Scanner scanner = new Scanner(System.in); // Scanner instance for user input
@@ -60,7 +62,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         try {
             accountManager = (AccountManager) Naming.lookup("rmi://localhost/AccountManager");
             wordServer = (WordServer) Naming.lookup("rmi://localhost/WordServer");
-            CrosswordGameState = (CrosswordGameState) Naming.lookup("rmi://localhost/CrosswordGameState");
+            //CrosswordGameState = (CrosswordGameState) Naming.lookup("rmi://localhost/CrosswordGameState");
             server = (CrissCrossPuzzleServer) Naming.lookup("rmi://localhost/CrissCrossPuzzleServer");
         } catch (Exception e) {
             System.err.println("Error connecting to RMI services: " + e.getMessage());
@@ -229,8 +231,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     failFactor = scanner.nextInt();
 
                     System.out.print("Waiting for game");
-					gameID = server.startMultiplayer(name, players, failFactor);
-					if (gameID != null) {
+					game = server.startMultiplayer(name, players, failFactor);
+					if (game != null) {
 					    state = GameState.INGAME;
 					}
 					break;
@@ -257,14 +259,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         System.out.println("\nYou are now in-game.");
         System.out.println("Type 'exit' to leave the game.");
         System.out.println("\nSetting up Game... Please Wait\n");
-        printUserGame(gameID);
         System.out.println("\nStarting Game\n");
-        String gameScores = server.displayAllScores(gameID);
-        System.out.print("\nCurrent Scores:\n");
-        System.out.print(gameScores);
-
-        CrosswordGameState gameState = server.getGameState(gameID);
-        char[][] playerGrid = gameState.getPlayerGrid();
+        game.displayGrid("player");
 
         Scanner scanner = new Scanner(System.in);
     
@@ -353,7 +349,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                     default:
                         System.out.println("\nChecking word: " + input); // Use println instead of print
                         currentGrid = server.getCurrentGrid(gameID); 
-                        client.sendMessage(gameState.getPlayerNames(), name, input);
+                        //client.sendMessage(gameState.getPlayerNames(), name, input);
                         gameID = server.updateGuess(server.getGameState(gameID), input);
                         break;
                 }

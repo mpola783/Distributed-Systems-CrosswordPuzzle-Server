@@ -12,6 +12,7 @@ import java.io.*;
 import java.util.List;
 import java.rmi.NotBoundException;
 import java.net.MalformedURLException;
+import game.Game;
 
 
 public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements CrissCrossPuzzleServer {
@@ -55,10 +56,49 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
         return null;
     }
 
+    public static Game translateToGame(CrosswordGameState gameState) throws RemoteException {
+        Game game = new Game(
+            gameState.getGameID(),
+            gameState.getNumWords(),
+            gameState.getTotalLives(),
+            gameState.getGameWords(), // optional field
+            false,  // multiplayer off for now
+            0       // expectedPlayers unused
+        );
 
+        // Add players
+        for (String name : gameState.getPlayerNames()) {
+            game.addPlayer(name);
+        }
+
+        // Set current state
+        game.setActivePlayer(gameState.getActivePlayer());
+        game.setLives(gameState.getLives());
+        game.setGameStatus(gameState.getGameStatus());
+
+        // Copy grids
+        char[][] finishedGrid = gameState.getFinishedGrid();
+        char[][] playerGrid = gameState.getPlayerGrid();
+        for (int i = 0; i < finishedGrid.length; i++) {
+            game.setFinishedGridRow(i, finishedGrid[i]);
+        }
+        for (int i = 0; i < playerGrid.length; i++) {
+            game.setPlayerGridRow(i, playerGrid[i]);
+        }
+
+        // Copy guesses
+        for (char letter : gameState.getLettersGuessed()) {
+            game.addGuessedLetter(letter);
+        }
+        for (String word : gameState.getWordsGuessed()) {
+            game.addGuessedWord(word);
+        }
+
+        return game;
+    }
 
    @Override
-    public String startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
+    public Game startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
         String gameID = null;
         boolean isNewLobby = true;
     
@@ -105,7 +145,9 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
                 if(pendingLobbies.get(gameID).getHostName().equals(name)) {
                     gameID = startGame(name, numberOfPlayers, gameLevel, gameID);
                 }
-                return gameID;
+
+                Game game = translateToGame(getGameState(gameID))
+                return game;
             }
             try {
                 Thread.sleep(3000); // Wait 3 seconds before checking again
