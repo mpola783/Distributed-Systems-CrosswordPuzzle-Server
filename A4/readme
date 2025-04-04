@@ -5,6 +5,5 @@ How to Run
 AccountManagerImpl
 WordServerImpl
 ReceiverImpl
-CrosswordGameStateImpl
 CrissCrossPuzzleServerImpl
 5. Finally run the ClientMicroservice to connect to the game. (multiple instances for multiplayer)
