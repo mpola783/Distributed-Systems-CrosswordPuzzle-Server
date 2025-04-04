@@ -3,7 +3,7 @@ package game;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Game {
+public class Game implements java.io.Serializable{
 
     private String gameID;
     private String activePlayer;
@@ -36,7 +36,7 @@ public class Game {
         this.wordsGuessed = new String[maxwordsGuessed];
         this.finishedGrid = new char[numWords][];
         this.playerGrid = new char[numWords][];
-        this.gameStatus = "in-progress";
+        this.gameStatus = "Waiting";
     }
 
     // === Basic Getters/Setters ===
@@ -188,7 +188,7 @@ public class Game {
     }
 
     public String checkGuess(String guess, String playerName) {
-        System.out.println("\nChecking guess: " + guess);
+        //System.out.println("\nChecking guess: " + guess); for client
         boolean correctGuess = false;
 
         if (guess.length() == 1) {
@@ -210,10 +210,10 @@ public class Game {
         // Check win/loss state
         if (isPlayerGridComplete()) {
             this.gameStatus = "WIN";
-            System.out.println("\nGAME WON\n");
+            //System.out.println("\nGAME WON\n"); letting client print
         } else if (this.lives <= 0) {
             this.gameStatus = "LOSE";
-            System.out.println("\nGAME LOST\n");
+            //System.out.println("\nGAME LOST\n"); same as ^^
         }
 
         return this.gameID;

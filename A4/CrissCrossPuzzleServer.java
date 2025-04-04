@@ -6,6 +6,7 @@
 import java.rmi.*;
 import java.rmi.RemoteException;
 import java.util.List;
+import game.Game;
 
 public interface CrissCrossPuzzleServer extends Remote{
 

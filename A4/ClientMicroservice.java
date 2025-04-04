@@ -36,7 +36,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
     private AccountManager accountManager;
     private WordServer wordServer;
-    private CrosswordGameState CrosswordGameState;
+    //private CrosswordGameState CrosswordGameState;
     private CrissCrossPuzzleServer server;
     private ReceiverInterface client; 
     private ReceiverInterface receiver;
@@ -167,7 +167,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 		System.out.println("2. Lookup Word");
 		System.out.println("3. Remove Word");
 		System.out.println("4. Add Word");
-		System.out.println("5. Start Singleplayer");
+		System.out.println("5. Start Singleplayer // REMOVED FROM VERSION 4\n"); //TODO remove
 		System.out.println("6. Join Multiplayer");
         System.out.println("7. Logout");
     
@@ -209,18 +209,18 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 					System.out.println(wordServer.createWord(scanner.nextLine()));
 					break;
 				case 5:
-                    System.out.print("Enter number of words: ");
-                    numWords = scanner.nextInt();
-                    System.out.print("Enter fail factor: ");
-                    failFactor = scanner.nextInt();
-                    scanner.nextLine(); // consume newline
+                     System.out.print("Singleplayer no longer supported\n");
+                    // numWords = scanner.nextInt();
+                    // System.out.print("Enter fail factor: ");
+                    // failFactor = scanner.nextInt();
+                    // scanner.nextLine(); // consume newline
 
-                    // Now call startGame on the instance
-                    gameID = server.startGame(name, numWords, failFactor, null);
+                    // // Now call startGame on the instance
+                    // gameID = server.startGame(name, numWords, failFactor, null);
 
-					if (gameID != null) {
-						state = GameState.INGAME;
-					}
+					// if (gameID != null) {
+					// 	state = GameState.INGAME;
+					// }
 					break;
 				case 6:
                     System.out.print("Enter number of players: ");
@@ -256,52 +256,61 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
      */
     private void handleInGame() throws RemoteException {
 
-        System.out.println("\nYou are now in-game.");
-        System.out.println("Type 'exit' to leave the game.");
-        System.out.println("\nSetting up Game... Please Wait\n");
-        System.out.println("\nStarting Game\n");
+        System.out.println("\n===================================");
+        System.out.println("       Welcome! You are now in-game");
+        System.out.println("===================================\n");
+        
+        System.out.println("Setting up the game... Please wait...");
+        System.out.println("Starting game now!\n");
+        
+        System.out.println("===================================");
+        System.out.println(" Player: " + name);
+        System.out.println("===================================\n");
+        
+        System.out.println("  How to Play:\n");
+        System.out.println("  - Enter a letter or word as your guess\n");
+        System.out.println("  - Type '?'      Get a hint or lookup\n");
+        System.out.println("  - Type '!'      Restart the game\n");
+        System.out.println("  - Type 'exit'   Leave the game\n");
+        
+        
+        System.out.println("\nYour Game Board:");
         game.displayGrid("player");
-
         Scanner scanner = new Scanner(System.in);
     
         // Main in-game loop for user commands
         boolean inGameLoop = true;
         while (inGameLoop && state == GameState.INGAME) {
-            gameState = server.getGameState(gameID);
+            //gameState = server.getGameState(gameID); //TODO not needed
             
-            if ("WIN".equals(gameState.getGameStatus()) || "LOSE".equals(gameState.getGameStatus())) {
+            if ("WIN".equals(game.getGameStatus()) || "LOSE".equals(game.getGameStatus())) {
                 inGameLoop = false;
                 state = GameState.READY;
 
-                if ("LOSE".equals(gameState.getGameStatus())) {
+                if ("LOSE".equals(game.getGameStatus())) {
                     System.out.println("GAME LOST\n");
-                    accountManager.updateScore(name, false, gameState.checkMultiplayer());
+                    accountManager.updateScore(name, false, true);
                 }
                 else {
                     System.out.println("GAME WON\n");
-                    accountManager.updateScore(name, true, gameState.checkMultiplayer());
+                    accountManager.updateScore(name, true, true);
                 }
                 
-                gameState.removePlayer(name);
-                if(gameState.getLobbySize() == 0) {
-                    server.exitGame(gameID);
-                    gameID = null;
-                }
+                //gameState.removePlayer(name);
+                //if(gameState.getLobbySize() == 0) { from heartbeat quick exit, not needed
+                //    server.exitGame(gameID);
+                //    game = null;
+                //}
+                game = null; //exit game
             }
 
             else
             {   
-                System.out.println("\n Player Name :" + name);  
-                System.out.println("\nEnter letter or word for guess"); 
-                System.out.println("exit (Leave)");    
-                System.out.println("? (Lookup)");   
-                System.out.println("! (Restart)");
-                System.out.print("\nCurrent Score:\n");
-                System.out.print(gameScores);
-                printUserGame(gameID);
-                
-                System.out.print("Enter guess: ");
+                System.out.print("\nEnter guess: ");
                 String input = scanner.nextLine().trim().toLowerCase();
+
+
+                
 
                 switch (input) {
                     case "exit":
@@ -309,32 +318,33 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         input = scanner.nextLine().trim().toLowerCase();
                         if ("y".equals(input)) {
                             System.out.println("Exiting game...");
-                            gameState = server.getGameState(gameID);
-                            accountManager.updateScore(name, false, gameState.checkMultiplayer());
+                            //gameState = server.getGameState(gameID);
+                            accountManager.updateScore(name, false, true);
                             inGameLoop = false;
                             state = GameState.READY;
-                            gameState.removePlayer(name);
-                            if(gameState.getLobbySize() == 0) {
-                                server.exitGame(gameID);
-                                gameID = null;
-                            }
+                            //gameState.removePlayer(name);
+                            //if(gameState.getLobbySize() == 0) {
+                            //    server.exitGame(gameID); //TODO idk?
+                            //    game = null;
+                            //}
+                            game = null; //TODO new logic?
                         }
                         break;
 
                     case "!":
-                        if(gameState.getLobbySize() > 0) {
+                        if(true) {
                             System.out.print("Restarting Multiplayer Games is not allowed");
                         }
-                        else{
-                            System.out.print("This will count as a loss. Are you sure you want to restart? (y/n): ");
-                            input = scanner.nextLine().trim().toLowerCase();
-                            if ("y".equals(input)) {
-                                gameState = server.getGameState(gameID);
-                                accountManager.updateScore(name, false, gameState.checkMultiplayer());
-                                gameID = server.restartGame(gameID);
-                            }
-                            printUserGame(gameID);
-                        }
+                        // else{
+                        //     System.out.print("This will count as a loss. Are you sure you want to restart? (y/n): ");
+                        //     input = scanner.nextLine().trim().toLowerCase();
+                        //     if ("y".equals(input)) {
+                        //         //gameState = server.getGameState(gameID);
+                        //         accountManager.updateScore(name, false, true);
+                        //         gameID = server.restartGame(gameID);
+                        //     }
+                        //     printUserGame(gameID);
+                        // }
                         break;
 
                     case "?":
@@ -347,10 +357,16 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         break;
 
                     default:
-                        System.out.println("\nChecking word: " + input); // Use println instead of print
-                        currentGrid = server.getCurrentGrid(gameID); 
-                        //client.sendMessage(gameState.getPlayerNames(), name, input);
-                        gameID = server.updateGuess(server.getGameState(gameID), input);
+                        System.out.println("Guess received: '" + input + "'\n");
+
+                        
+                        //currentGrid = server.getCurrentGrid(gameID); 
+                        //client.sendMessage(gameState.getPlayerNames(), name, input); //TODO resend+fix
+                        //gameID = server.updateGuess(server.getGameState(gameID), input); //TODO replace logic
+
+                        game.checkGuess(input,name);
+                        System.out.println("Updated Board:\n");
+                        game.displayGrid("player");
                         break;
                 }
             }
@@ -383,48 +399,48 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     }
 
     // Helper method to compare game states
-    private boolean isStateEqual(CrosswordGameState currentState, CrosswordGameState lastState) {
-        // Null check to avoid NullPointerException
-        if (currentState == null || lastState == null) {
-            return false;
-        }
+    // private boolean isStateEqual(CrosswordGameState currentState, CrosswordGameState lastState) {
+    //     // Null check to avoid NullPointerException
+    //     if (currentState == null || lastState == null) {
+    //         return false;
+    //     }
 
-        try {
-            // Compare game states field by field
-            boolean isEqual = Objects.equals(currentState.getLives(), lastState.getLives()) &&
-                  Objects.equals(currentState.getGameID(), lastState.getGameID());
-                  System.out.println("\nLAST STATE LIVES: " + lastState.getLives());
-                  System.out.println("\nCURRENT STATE LIVES: " + currentState.getLives());
-            return isEqual;
-        } catch (RemoteException e) {
-            System.err.println("Error comparing game states: " + e.getMessage());
-            return false;
-        }
-    }
+    //     try {
+    //         // Compare game states field by field
+    //         boolean isEqual = Objects.equals(currentState.getLives(), lastState.getLives()) &&
+    //               Objects.equals(currentState.getGameID(), lastState.getGameID());
+    //               System.out.println("\nLAST STATE LIVES: " + lastState.getLives());
+    //               System.out.println("\nCURRENT STATE LIVES: " + currentState.getLives());
+    //         return isEqual;
+    //     } catch (RemoteException e) {
+    //         System.err.println("Error comparing game states: " + e.getMessage());
+    //         return false;
+    //     }
+    // }
 
-    public void printUserGame(String gameID) throws RemoteException {
-        CrosswordGameState gameServer = server.getGameState(gameID);
+    // public void printUserGame(String gameID) throws RemoteException {
+    //     CrosswordGameState gameServer = server.getGameState(gameID);
         
-        for (int i = 0; gameServer.getPlayerGrid() == null; i++) {
-            try {
-                Thread.sleep(1000);  // Sleep for 1 second
-            } catch (InterruptedException e) {
-                e.printStackTrace();  // Handle the exception (you can log it or re-throw it depending on your needs)
-            }
+    //     for (int i = 0; gameServer.getPlayerGrid() == null; i++) {
+    //         try {
+    //             Thread.sleep(1000);  // Sleep for 1 second
+    //         } catch (InterruptedException e) {
+    //             e.printStackTrace();  // Handle the exception (you can log it or re-throw it depending on your needs)
+    //         }
 
-            // Back to main menu in case of error
-            if (i == 6) {
-                System.out.println("Game Loading error");
-                handleReady();
-            }
-        }
+    //         // Back to main menu in case of error
+    //         if (i == 6) {
+    //             System.out.println("Game Loading error");
+    //             handleReady();
+    //         }
+    //     }
 
-        System.out.print("\n");
-        for (char[] row : gameServer.getPlayerGrid()) {
-    		    System.out.println(new String(row) + "+");  // Append '+' at the end of each row
-    		}
-        System.out.print("\nLives: " + gameServer.getLives() + "\n");
-    }
+    //     System.out.print("\n");
+    //     for (char[] row : gameServer.getPlayerGrid()) {
+    // 		    System.out.println(new String(row) + "+");  // Append '+' at the end of each row
+    // 		}
+    //     System.out.print("\nLives: " + gameServer.getLives() + "\n");
+    // }
 
 
     /**

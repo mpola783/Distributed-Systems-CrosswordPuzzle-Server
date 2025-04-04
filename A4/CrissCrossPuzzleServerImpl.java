@@ -146,7 +146,7 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
                     gameID = startGame(name, numberOfPlayers, gameLevel, gameID);
                 }
 
-                Game game = translateToGame(getGameState(gameID))
+                Game game = translateToGame(getGameState(gameID));
                 return game;
             }
             try {
