@@ -5,6 +5,7 @@
  * like win/loss notifications.
  */
 
+
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -40,7 +41,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
     private CrissCrossPuzzleServer server;
     private ReceiverInterface client; 
     private ReceiverInterface receiver;
-    private Game game;
+    private volatile Game game;
     private static char[][] currentGrid;
 
     private Scanner scanner = new Scanner(System.in); // Scanner instance for user input
@@ -138,7 +139,17 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         name = username;
                         client = new ReceiverImpl(name); // Create the Receiver object
                         Naming.rebind("rmi://localhost/ReceiverInterface/" + name, client);
-
+                        
+                        
+                        ReceiverImpl.registerGameHandler(updatedGame -> {
+                            this.game = updatedGame;
+                            if (state != GameState.INGAME) {
+                                state = GameState.INGAME;
+                            }
+                            System.out.println("\n[SYNC] Game updated by another player:");
+                            game.displayGrid("player");
+                        });
+                        
                         state = GameState.READY;
                         System.out.println("\nLogin successful! Welcome, " + name);
                         break;
@@ -167,7 +178,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 		System.out.println("2. Lookup Word");
 		System.out.println("3. Remove Word");
 		System.out.println("4. Add Word");
-		System.out.println("5. Start Singleplayer // REMOVED FROM VERSION 4\n"); //TODO remove
+		System.out.println("5. Start Singleplayer // REMOVED FROM VERSION 4"); //TODO remove
 		System.out.println("6. Join Multiplayer");
         System.out.println("7. Logout");
     
@@ -209,7 +220,7 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 					System.out.println(wordServer.createWord(scanner.nextLine()));
 					break;
 				case 5:
-                     System.out.print("Singleplayer no longer supported\n");
+                     System.out.print("Singleplayer no longer supported");
                     // numWords = scanner.nextInt();
                     // System.out.print("Enter fail factor: ");
                     // failFactor = scanner.nextInt();
@@ -232,9 +243,9 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
 
                     System.out.print("Waiting for game");
 					game = server.startMultiplayer(name, players, failFactor);
-					if (game != null) {
-					    state = GameState.INGAME;
-					}
+					
+					state = GameState.INGAME;
+					
 					break;
 				case 7:
                     handleLogout();
@@ -255,7 +266,27 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
      * TODO: Implement full functionality for INGAME state operations.
      */
     private void handleInGame() throws RemoteException {
+        
 
+        //////////////////// Dirty loop to wait for game ///////////////////
+        for (int i = 0; i < 200; i++) {
+            if (game != null) {
+                break; // Game has loaded, exit loop
+            }
+        
+            try {
+                Thread.sleep(100); // Wait a bit before retrying (200 * 100ms = ~20s max wait)
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // Restore the interrupt flag
+                break;
+            }
+        }
+        
+        // If game never loaded after waiting
+        if (game == null) {
+            System.out.println("Game failed to load. Returning to menu...");
+            state = GameState.READY;
+        }
         System.out.println("\n===================================");
         System.out.println("       Welcome! You are now in-game");
         System.out.println("===================================\n");
@@ -363,8 +394,8 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
                         //currentGrid = server.getCurrentGrid(gameID); 
                         //client.sendMessage(gameState.getPlayerNames(), name, input); //TODO resend+fix
                         //gameID = server.updateGuess(server.getGameState(gameID), input); //TODO replace logic
-
                         game.checkGuess(input,name);
+                        client.sendGame(game.getNamesOfPlayers(), name, game);
                         System.out.println("Updated Board:\n");
                         game.displayGrid("player");
                         break;
@@ -455,14 +486,3 @@ public class ClientMicroservice { //extends UnicastRemoteObject implements GameE
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -34,10 +34,15 @@ public class Game implements java.io.Serializable{
         this.expectedPlayers = expectedPlayers;
         this.lettersGuessed = new char[maxlettersGuessed];
         this.wordsGuessed = new String[maxwordsGuessed];
-        this.finishedGrid = new char[numWords][];
-        this.playerGrid = new char[numWords][];
+        this.finishedGrid = null;
+        this.playerGrid = null;
         this.gameStatus = "Waiting";
     }
+
+    public void initializeGrids(int height, int width) {
+        this.finishedGrid = new char[height][width];
+        this.playerGrid = new char[height][width];
+    }  
 
     // === Basic Getters/Setters ===
     public String getGameID() {
@@ -119,6 +124,10 @@ public class Game implements java.io.Serializable{
 
     public List<String> getPlayerNames() {
         return playerNames;
+    }
+
+    public String[] getNamesOfPlayers() {
+        return playerNames.toArray(new String[0]);
     }
 
     // === Game Actions ===

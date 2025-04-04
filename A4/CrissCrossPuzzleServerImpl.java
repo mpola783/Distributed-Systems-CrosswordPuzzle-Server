@@ -57,45 +57,79 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
     }
 
     public static Game translateToGame(CrosswordGameState gameState) throws RemoteException {
+        char[][] finishedGrid = gameState.getFinishedGrid();
+        char[][] playerGrid = gameState.getPlayerGrid();
+
+        int gridHeight = finishedGrid.length;
+        int gridWidth = finishedGrid[0].length; // assuming non-jagged grid
+        
+        System.out.println("Translating game ID: " + gameState.getGameID());
+
         Game game = new Game(
             gameState.getGameID(),
             gameState.getNumWords(),
             gameState.getTotalLives(),
-            gameState.getGameWords(), // optional field
-            false,  // multiplayer off for now
-            0       // expectedPlayers unused
+            gameState.getGameWords(),
+            false,
+            0
         );
 
-        // Add players
+        // Dynamically set up the internal grid dimensions
+        game.initializeGrids(gridHeight, gridWidth); // <-- new method in Game
+
+        System.out.println("Game object created.");
+
         for (String name : gameState.getPlayerNames()) {
+            System.out.println("Adding player: " + name);
             game.addPlayer(name);
         }
 
-        // Set current state
         game.setActivePlayer(gameState.getActivePlayer());
         game.setLives(gameState.getLives());
         game.setGameStatus(gameState.getGameStatus());
+        System.out.println("Set basic game state.");
 
-        // Copy grids
-        char[][] finishedGrid = gameState.getFinishedGrid();
-        char[][] playerGrid = gameState.getPlayerGrid();
-        for (int i = 0; i < finishedGrid.length; i++) {
-            game.setFinishedGridRow(i, finishedGrid[i]);
-        }
-        for (int i = 0; i < playerGrid.length; i++) {
-            game.setPlayerGridRow(i, playerGrid[i]);
-        }
-
-        // Copy guesses
-        for (char letter : gameState.getLettersGuessed()) {
-            game.addGuessedLetter(letter);
-        }
-        for (String word : gameState.getWordsGuessed()) {
-            game.addGuessedWord(word);
+        finishedGrid = gameState.getFinishedGrid();
+        if (finishedGrid != null) {
+            System.out.println("Finished grid size: " + finishedGrid.length);
+            for (int i = 0; i < finishedGrid.length; i++) {
+                System.out.println("Copying finishedGrid row " + i);
+                game.setFinishedGridRow(i, finishedGrid[i]);
+            }
+            System.out.println("Finished grid set.");
+        } else {
+            System.out.println("Finished grid is null!");
         }
 
+        playerGrid = gameState.getPlayerGrid();
+        if (playerGrid != null) {
+            System.out.println("Player grid size: " + playerGrid.length);
+            for (int i = 0; i < playerGrid.length; i++) {
+                System.out.println("Copying playerGrid row " + i);
+                game.setPlayerGridRow(i, playerGrid[i]);
+            }
+            System.out.println("Player grid set.");
+        } else {
+            System.out.println("Player grid is null!");
+        }
+
+        char[] letters = gameState.getLettersGuessed();
+        if (letters != null) {
+            for (char letter : letters) {
+                game.addGuessedLetter(letter);
+            }
+        }
+
+        String[] words = gameState.getWordsGuessed();
+        if (words != null) {
+            for (String word : words) {
+                game.addGuessedWord(word);
+            }
+        }
+
+        System.out.println("Translation complete.");
         return game;
-    }
+    }   
 
    @Override
     public Game startMultiplayer(String name, int numberOfPlayers, int gameLevel) throws RemoteException {
@@ -145,8 +179,13 @@ public class CrissCrossPuzzleServerImpl extends UnicastRemoteObject implements C
                 if(pendingLobbies.get(gameID).getHostName().equals(name)) {
                     gameID = startGame(name, numberOfPlayers, gameLevel, gameID);
                 }
-
+                else {
+                    return null;
+                }
+                
+                System.out.println("Got Here");
                 Game game = translateToGame(getGameState(gameID));
+                game.displayGrid("finished");
                 return game;
             }
             try {

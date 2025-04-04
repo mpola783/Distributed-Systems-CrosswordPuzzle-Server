@@ -18,14 +18,15 @@
 
  import java.rmi.Remote;
  import java.rmi.RemoteException;
+ import game.Game;
  
  /**
   * Receiver interface for handling incoming messages.
   */
  public interface ReceiverInterface extends Remote {
 
-     boolean receiveMessage(String guess, String senderID, int timestamp) throws RemoteException;
-     void sendMessage(String[] players, String sender, String message) throws RemoteException;
      void doEvent(String event, char[][] grid) throws RemoteException;
+
+     boolean receiveGame(Game game, String senderID, int timestamp) throws RemoteException;
+     void sendGame(String[] players, String senderID, Game game) throws RemoteException;
  }
- 

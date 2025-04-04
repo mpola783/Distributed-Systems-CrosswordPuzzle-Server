@@ -1,65 +1,27 @@
-/**
- * COMP4635 Tutorial
- * Example implementation of a peer-to-peer application that allows peers to exchange messages.
- * The application implements Lamport Clocks.
- *
- * Code Structure:
- * 1. LamportClock.java       - Implements the Lamport logical clock.
- * 2. Message.java            - Represents a message with content and timestamp.
- * 3. ReceiverInterface.java  - Defines the remote interface for receiving messages.
- * 4. ReceiverImpl.java       - Implements ReceiverInterface, processes messages, and maintains the clock.
- * 5. PeerProcess.java        - The main entry point for starting a peer node.
- */
-
- /**
- * ReceiverImpl.java
- * Implements the ReceiverInterface, allowing processes to receive messages via RMI.
- */
-
 import java.rmi.*;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.*;
-import java.util.Scanner;
-import java.io.Serializable;
-import java.util.*;   
+import java.util.*;
+import java.io.*;
+import game.Game;
 
-/**
- * Implements the ReceiverInterface, handling message reception and processing.
- */
 public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterface {
-    private String processName;  // The name of this process
-    private LamportClock clock;  // The Lamport clock instance
-    private PriorityQueue<Message> messageQueue = new PriorityQueue<>();
+
+    private String processName;
+    private LamportClock clock;
+    private PriorityQueue<GameMessage> gameQueue = new PriorityQueue<>();
     private Map<String, Integer> lastSeenTimestamps = new HashMap<>();
 
-    public class Message implements Comparable<Message> {
-        private final String content;
-        private final String senderID;
-        private final int timestamp;
+    // Interface for applying received game updates
+    public interface GameUpdateHandler extends Serializable {
+        void applyGameUpdate(Game game);
+    }
 
-        public Message(String content, String senderID, int timestamp) {
-            this.content = content;
-            this.senderID = senderID;
-            this.timestamp = timestamp;
-        }
+    private static GameUpdateHandler gameHandler = null;
 
-        public String getContent() { return content; }
-        public String getSenderID() { return senderID; }
-        public int getTimestamp() { return timestamp; }
-
-        @Override
-        public int compareTo(Message other) {
-            // First compare timestamps
-            int timeCompare = Integer.compare(this.timestamp, other.timestamp);
-            // Tie-breaker: compare sender IDs (assumes lexicographical order is consistent)
-            return (timeCompare != 0) ? timeCompare : this.senderID.compareTo(other.senderID);
-        }
-
-        @Override
-        public String toString() {
-            return "[" + senderID + " @ " + timestamp + "] " + content;
-        }
-    } 
+    public static void registerGameHandler(GameUpdateHandler handler) {
+        gameHandler = handler;
+    }
 
     public ReceiverImpl(String name) throws RemoteException {
         super();
@@ -67,35 +29,53 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
         this.clock = new LamportClock();
     }
 
+    // GameMessage used in the priority queue
+    public static class GameMessage implements Comparable<GameMessage>, Serializable {
+        private final Game game;
+        private final String senderID;
+        private final int timestamp;
+
+        public GameMessage(Game game, String senderID, int timestamp) {
+            this.game = game;
+            this.senderID = senderID;
+            this.timestamp = timestamp;
+        }
+
+        public Game getGame() { return game; }
+        public String getSenderID() { return senderID; }
+        public int getTimestamp() { return timestamp; }
+
+        @Override
+        public int compareTo(GameMessage other) {
+            int timeCompare = Integer.compare(this.timestamp, other.timestamp);
+            return (timeCompare != 0) ? timeCompare : this.senderID.compareTo(other.senderID);
+        }
+
+        @Override
+        public String toString() {
+            return "[" + senderID + " @ " + timestamp + "] Game";
+        }
+    }
 
     @Override
-    public boolean receiveMessage(String guess, String senderID, int receivedTimestamp) throws RemoteException {
-        int oldInternalTimestamp = clock.getTime();
-        int newTimestamp = clock.update(receivedTimestamp);
+    public boolean receiveGame(Game game, String senderID, int timestamp) throws RemoteException {
+        clock.update(timestamp);
+        lastSeenTimestamps.put(senderID, timestamp);
 
-        // Track the latest message timestamp received from sender
-        lastSeenTimestamps.put(senderID, receivedTimestamp);
+        gameQueue.add(new GameMessage(game, senderID, timestamp));
+        System.out.println("[" + processName + "] Received game from " + senderID + " @ " + timestamp);
 
-        // Add to the priority queue
-        Message msg = new Message(guess, senderID, receivedTimestamp);
-        messageQueue.add(msg);
-
-        System.out.println("[" + processName + "] Queued: " + msg);
-
-        deliverMessagesInOrder(); // Try to deliver if safe
-
+        deliverGameMessagesInOrder();
         return true;
     }
 
-    private void deliverMessagesInOrder() {
-        while (!messageQueue.isEmpty()) {
-            Message head = messageQueue.peek();  // Get the earliest message
+    private void deliverGameMessagesInOrder() {
+        while (!gameQueue.isEmpty()) {
+            GameMessage head = gameQueue.peek();
 
-            // Check if all senders have sent something newer than this
             boolean safeToDeliver = true;
-
             for (String sender : lastSeenTimestamps.keySet()) {
-                if (sender.equals(head.getSenderID())) continue; // skip FIFO part; already guaranteed
+                if (sender.equals(head.getSenderID())) continue;
 
                 int lastSeen = lastSeenTimestamps.getOrDefault(sender, -1);
                 if (lastSeen <= head.getTimestamp()) {
@@ -105,16 +85,41 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
             }
 
             if (safeToDeliver) {
-                // All conditions satisfied, deliver
-                System.out.println("[" + processName + "] Delivered: " + head);
-                messageQueue.poll();  // Remove the head
+                System.out.println("[" + processName + "] DELIVERED Game from " + head.getSenderID() + " @ " + head.getTimestamp());
+
+                Game receivedGame = head.getGame();
+
+                if (gameHandler != null) {
+                    gameHandler.applyGameUpdate(receivedGame);
+                } else {
+                    System.out.println("No game handler registered to apply game update.");
+                }
+
+                gameQueue.poll(); // remove from queue
             } else {
-                // Not safe to deliver yet
-                break;
+                break; // not ready yet
             }
         }
     }
 
+    @Override
+    public void sendGame(String[] players, String senderID, Game game) throws RemoteException {
+        int timestamp = clock.tick();
+
+        for (String player : players) {
+            lastSeenTimestamps.putIfAbsent(player, -1);
+        }
+
+        for (String player : players) {
+            try {
+                ReceiverInterface target = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface/" + player);
+                target.receiveGame(game, senderID, timestamp);
+                System.out.println("[" + processName + "] Sent Game to " + player + " @ " + timestamp);
+            } catch (Exception e) {
+                System.err.println("Failed to send Game to " + player + ": " + e.getMessage());
+            }
+        }
+    }
 
     @Override
     public void doEvent(String event, char[][] grid) throws RemoteException {
@@ -122,45 +127,15 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
         System.out.println("[" + processName + "] Event: " + event + " | Timestamp: " + newTimestamp);
     }
 
-    /**
-     * Sends a message to another process over RMI.
-     * @param targetProcess The name of the recipient process.
-     * @param message The message content.
-     */
-    @Override
-    public void sendMessage(String[] players, String senderID, String guess) throws RemoteException {
-        try {
-            int newTimestamp = clock.tick();
-            //Message msg = new Message(message, newTimestamp);
-
-            for (String player : players) {
-                if (!player.equals(senderID)) { // Skip the sender
-                    ReceiverInterface target = (ReceiverInterface) Naming.lookup("rmi://localhost/ReceiverInterface/" + player);
-                    target.receiveMessage(guess, senderID, newTimestamp);
-                    System.out.println("[" + processName + "] Guessed: " + guess + " -> Sent to " + player);
-                }
-                else {
-                    System.out.println("\nSkipping Sender\n");
-                    System.out.println("Updated Timestamp: " + newTimestamp);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to send message: " + e.getMessage());
-        }
-    }
-
     public static void main(String[] args) {
         try {
             Scanner scanner = new Scanner(System.in);
             System.out.print("Enter process name: ");
-            String processName = scanner.nextLine().trim(); // Get user-defined name
+            String processName = scanner.nextLine().trim();
 
-            // Create the ReceiverImpl instance with the chosen name
             ReceiverImpl server = new ReceiverImpl(processName);
-            
-            // Bind it with a unique RMI name
             Naming.rebind("rmi://localhost/ReceiverInterface/" + processName, server);
-            System.out.println("Receiver Interface is running...");
+            System.out.println("Receiver Interface is running as '" + processName + "'.");
 
         } catch (Exception e) {
             System.err.println("Error starting Receiver Interface");
