@@ -1,3 +1,27 @@
+/**
+ * The ReceiverImpl class implements the ReceiverInterface and provides an RMI-based receiver that
+ *  processes the game messages from other client processes to achieve FIFO - total order Synchronization
+ * 
+ * Key responsibilities of this class:
+ * 1. **Receive Game Messages**: Receives and processes game updates sent by other client processes.
+ * 2. **Deliver Game Messages in Order**: Ensures that game messages are delivered in the correct order based on Lamport logical timestamps.
+ * 3. **Clock Synchronization**: Uses a Lamport clock to synchronize messages from different clients.
+ * 4. **Gossip Protocol**: Sends the received game message to all other players in the game (via RMI lookup).
+
+ * Dependencies:
+ * - `LamportClock`: A logical clock for timestamp synchronization between distributed processes.
+ * - `GameMessage`: A class that encapsulates the game object, sender ID, and timestamp of each received game update.
+ * - `GameUpdateHandler`: An interface for applying received game updates to the game state. Found in Client
+ * 
+ * Methods:
+ * 1. `receiveGame(Game game, String senderID, int timestamp)`: Handles the reception of a game message, updates the Lamport clock,
+ *    stores the message in the priority queue, and attempts to deliver all messages in the correct order.
+ * 2. `sendGame(String[] players, String senderID, Game game)`: Sends the game message to other players, using RMI to deliver the message.
+ * 3. `doEvent(String event, char[][] grid)`: Handles game events and updates the timestamp.
+ * 4. `main(String[] args)`: Entry point that starts the receiver server and binds it to the RMI registry.
+ */
+
+
 import java.rmi.*;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.*;
@@ -9,8 +33,8 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
 
     private String processName;
     private LamportClock clock;
-    private PriorityQueue<GameMessage> gameQueue = new PriorityQueue<>();
-    private Map<String, Integer> lastSeenTimestamps = new HashMap<>();
+    private PriorityQueue<GameMessage> gameQueue = new PriorityQueue<>(); //Keeps track of meesages in queue
+    private Map<String, Integer> lastSeenTimestamps = new HashMap<>(); // Keeps track of latest timestamp of each client nodes
 
     // Interface for applying received game updates
     public interface GameUpdateHandler extends Serializable {
@@ -57,18 +81,49 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
         }
     }
 
+    /**
+        * Handles the receival of a Game object from another client
+        * 
+        * Performs the following steps:
+        * 1. Updates the local Lamport clock using the received timestamp.
+        * 2. Records the latest timestamp received from the sender.
+        * 3. Adds the incoming game message to the local priority queue.
+        * 4. Attempts to deliver all safe-to-process messages in order by calling deliverGameMessagesInOrder().
+        * 
+        * @param game      The Game object received from the sender.
+        * @param senderID  The ID of the sender process.
+        * @param timestamp The Lamport timestamp associated with the message.
+        * @return true     Always returns true after processing the received message.
+        * @throws RemoteException If an RMI communication error occurs.
+    */
+
     @Override
     public boolean receiveGame(Game game, String senderID, int timestamp) throws RemoteException {
-        clock.update(timestamp);
-        lastSeenTimestamps.put(senderID, timestamp);
+        clock.update(timestamp);                            //Updates to the sender timestamp + 1;
+        lastSeenTimestamps.put(senderID, timestamp);        // Keeps track of latest timestamp of each client nodes
 
-        gameQueue.add(new GameMessage(game, senderID, timestamp));
+        gameQueue.add(new GameMessage(game, senderID, timestamp));  //Adds message to the back of the queue
         System.out.println("[" + processName + "] Received game from " + senderID + " @ " + timestamp);
 
         deliverGameMessagesInOrder();
         return true;
     }
 
+
+    /**
+        * Processes and delivers game messages from the gameQueue in order, ensuring that messages are delivered 
+        * only when it is safe to do so. Messages are considered safe to deliver if all messages from other senders 
+        * have a higher timestamp than the current message. The function follows the Lamport Clock logic to ensure 
+        * proper message delivery order and synchronization across processes.
+        * 
+        * The function operates as follows:
+        * 1. It checks the first (head) message in the queue.
+        * 2. It verifies that all messages from other senders have a higher timestamp than the current message.
+        * 3. If it is safe to deliver (i.e., all conditions are satisfied), the message is delivered:
+        *    - The game update from the message is applied using the registered `gameHandler`.
+        *    - The message is removed from the queue after successful delivery.
+        * 4. If it is not safe to deliver, the function will exit and wait for further messages.
+    */
     private void deliverGameMessagesInOrder() {
         while (!gameQueue.isEmpty()) {
             GameMessage head = gameQueue.peek();
@@ -102,10 +157,17 @@ public class ReceiverImpl extends UnicastRemoteObject implements ReceiverInterfa
         }
     }
 
+    /**
+     * This function: 
+     *      First increments the sender timestamp, 
+     *      Then gossips the sender message to all other players in game using RMI lookup
+     */
+
     @Override
     public void sendGame(String[] players, String senderID, Game game) throws RemoteException {
-        int timestamp = clock.tick();
+        int timestamp = clock.tick();  //Updates current timestamp for sender
 
+        //Initializes player timestamps to -1 if no messages received
         for (String player : players) {
             lastSeenTimestamps.putIfAbsent(player, -1);
         }

@@ -1,15 +1,3 @@
-/**
- * COMP4635 Tutorial
- * Example implementation of a peer-to-peer application that allows peers to exchange messages.
- * The application implements Lamport Clocks.
- *
- * Code Structure:
- * 1. LamportClock.java       - Implements the Lamport logical clock.
- * 2. Message.java            - Represents a message with content and timestamp.
- * 3. ReceiverInterface.java  - Defines the remote interface for receiving messages.
- * 4. ReceiverImpl.java       - Implements ReceiverInterface, processes messages, and maintains the clock.
- * 5. PeerProcess.java        - The main entry point for starting a peer node.
- */
 
  import java.io.Serializable;
  import java.util.concurrent.atomic.AtomicInteger;
